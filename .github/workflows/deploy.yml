@@ -1,5 +1,6 @@
-name: Deploy to TinkerHost FTP
+name: Deploy Laravel 12 to TinkerHost
 
+# 触发条件：每次 push 到 main 分支
 on:
   push:
     branches:
@@ -10,15 +11,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      # 1️⃣ 拉取仓库代码
+      - name: Checkout Repo
         uses: actions/checkout@v4
 
+      # 2️⃣ FTP 上传到 TinkerHost
       - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASS }}
-          server-dir: ${{ secrets.FTP_PATH }}
-          local-dir: ./
+          server-dir: ${{ secrets.FTP_PATH }}   # /htdocs/
+          local-dir: ./                          # 仓库根目录
           git-ftp-args: --insecure
+
+      # 3️⃣ 可选：显示部署完成
+      - name: Deployment Complete
+        run: echo "Laravel 12 deployed to TinkerHost successfully!"
