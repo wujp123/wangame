@@ -1,11 +1,24 @@
-name: Init Actions
+name: Deploy to TinkerHost FTP
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  init:
+  ftp-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - run: echo "Actions enabled"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: FTP Deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASS }}
+          server-dir: ${{ secrets.FTP_PATH }}
+          local-dir: ./
+          git-ftp-args: --insecure
