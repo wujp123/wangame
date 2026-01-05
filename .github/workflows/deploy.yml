@@ -1,0 +1,11 @@
+name: Init Actions
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Actions enabled"
