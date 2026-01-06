@@ -2,45 +2,39 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <!-- 核心：禁止缩放，适配移动端视口 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fruit Machine TMA</title>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://pixijs.download/v7.x/pixi.min.js"></script>
-    <!-- 引入 Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
 
-        /* 移动端重置样式 */
         body {
             background-color: #000;
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* 禁止滚动 */
-            display: flex;
-            justify-content: center;
-            align-items: flex-start; /* 顶对齐 */
+            margin: 0; padding: 0;
+            overflow: hidden;
+            display: flex; justify-content: center; align-items: flex-start;
             height: 100vh;
-            font-family: sans-serif;
-            touch-action: manipulation; /* 优化点击 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* 游戏整体缩放容器 */
         #app-scaler {
-            transform-origin: top center; /* 从顶部中间开始缩放 */
-            width: 500px; /* 设定基准宽度，略大于 Canvas */
+            transform-origin: top center;
+            width: 500px;
             padding-bottom: 50px;
         }
 
         .machine-body {
             width: 100%;
             background: linear-gradient(to bottom, #d32f2f, #8e0000);
-            border-radius: 0 0 30px 30px; /* 手机上顶部不需要圆角 */
+            border-radius: 0 0 30px 30px;
             padding: 15px;
-            box-sizing: border-box; /* 防止padding撑大 */
+            box-sizing: border-box;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
             position: relative;
             border-bottom: 5px solid #ff4d4d;
@@ -48,48 +42,32 @@
             border-right: 2px solid #a00;
         }
 
-        /* 顶部装饰灯 */
         .top-lights { display: flex; justify-content: space-around; margin-bottom: 10px; }
         .bulb { width: 12px; height: 12px; background: #ffeb3b; border-radius: 50%; box-shadow: 0 0 8px #ffeb3b; animation: blink 1s infinite alternate; }
         @keyframes blink { from { opacity: 0.5; } to { opacity: 1; } }
 
-        /* 记分牌 */
         .screen-panel {
             background: linear-gradient(to bottom, #1565c0, #0d47a1);
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 2px solid #42a5f5;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            border-radius: 10px; padding: 10px; margin-bottom: 10px;
+            border: 2px solid #42a5f5; display: flex; justify-content: space-between; align-items: center;
         }
         .lcd-group { text-align: center; flex: 1; }
         .lcd-label { color: #81d4fa; font-size: 10px; margin-bottom: 2px; font-weight: bold; }
         .lcd-display { background: #000; border: 1px solid #555; border-radius: 4px; padding: 2px 5px; margin: 0 5px;}
         .lcd-value { font-family: 'Orbitron', monospace; color: #ff5252; font-size: 20px; letter-spacing: 1px; }
 
-        /* Pixi 画布容器 */
         #game-container {
-            width: 470px; /* 适配内部宽度 */
-            height: 470px;
+            width: 470px; height: 470px;
             margin: 0 auto 10px auto;
-            background: #fce4ec;
-            border-radius: 10px;
-            border: 4px solid #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background: #fce4ec; border-radius: 10px; border: 4px solid #333;
+            display: flex; justify-content: center; align-items: center;
             background-image: radial-gradient(circle, #fff8e1, #ffecb3);
             box-shadow: inset 0 0 15px rgba(0,0,0,0.2);
         }
 
-        /* 底部控制区 */
         .control-panel {
             background: linear-gradient(to bottom, #1976d2, #0d47a1);
-            border-radius: 15px;
-            padding: 10px;
-            border-top: 2px solid #64b5f6;
+            border-radius: 15px; padding: 10px; border-top: 2px solid #64b5f6;
         }
 
         .func-buttons { display: flex; justify-content: space-between; margin-bottom: 10px; gap: 5px; }
@@ -99,13 +77,10 @@
             font-family: sans-serif;
         }
         .btn-large:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.4); }
-
         .btn-green { background: linear-gradient(#66bb6a, #2e7d32); }
         .btn-purple { background: linear-gradient(#ab47bc, #6a1b9a); }
         .btn-yellow { background: linear-gradient(#ffee58, #fbc02d); color: #b71c1c; font-size: 20px; font-weight: 800;}
-        .btn-blue { background: linear-gradient(#42a5f5, #1565c0); }
 
-        /* 水果下注按钮 */
         .bet-buttons { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
         .bet-unit { display: flex; flex-direction: column; align-items: center; }
         .bet-lcd {
@@ -121,7 +96,6 @@
         }
         .btn-fruit:active { transform: translateY(3px); box-shadow: 0 0 0 rgba(0,0,0,0.5); }
 
-        /* 颜色类 */
         .c-bar { background: linear-gradient(#81c784, #2e7d32); }
         .c-77 { background: linear-gradient(#ba68c8, #7b1fa2); }
         .c-star { background: linear-gradient(#fff176, #fbc02d); color: #333; }
@@ -130,15 +104,12 @@
         .c-lemon { background: linear-gradient(#aed581, #558b2f); }
         .c-orange { background: linear-gradient(#ffa726, #e65100); }
         .c-apple { background: linear-gradient(#ef5350, #b71c1c); }
-
     </style>
 </head>
 <body>
 
-<!-- 缩放容器 -->
 <div id="app-scaler">
     <div class="machine-body">
-
         <div class="top-lights">
             <div class="bulb"></div><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div>
         </div>
@@ -174,39 +145,30 @@
 </div>
 
 <script>
-    // --- 0. Telegram Mini App 初始化 ---
+    // --- 0. Telegram 初始化 ---
     const tg = window.Telegram.WebApp;
     tg.ready();
-    tg.expand(); // 强制全屏
+    try { tg.expand(); } catch(e){} // 只有在 TG 环境下才有效
 
-    // 设置 Header 背景色与机身融合
+    // 适配主题色
     tg.setHeaderColor('#d32f2f');
     tg.setBackgroundColor('#000000');
 
-    // 配置 Axios (把 TG 的 initData 发给后端验证)
     if (tg.initData) {
         axios.defaults.headers.common['X-Telegram-Data'] = tg.initData;
-    } else {
-        console.warn('未在 Telegram 环境中运行，将使用测试模式');
     }
 
-    // --- 1. 屏幕适配算法 (核心) ---
+    // --- 1. 屏幕适配 ---
     function resizeApp() {
         const scaler = document.getElementById('app-scaler');
-        const targetWidth = 500; // 我们的设计基准宽度
-        const screenWidth = window.innerWidth;
-
-        // 计算缩放比例
-        let scale = screenWidth / targetWidth;
-        if (scale > 1) scale = 1; // 桌面端不放大
-
+        const targetWidth = 500;
+        let scale = window.innerWidth / targetWidth;
+        if (scale > 1) scale = 1;
         scaler.style.transform = `scale(${scale})`;
-
-        // 修正高度，防止下方留白过多
         document.body.style.height = (scaler.offsetHeight * scale) + 'px';
     }
     window.addEventListener('resize', resizeApp);
-    resizeApp(); // 立即执行一次
+    resizeApp();
 
     // --- 2. 游戏配置 ---
     const FRUIT_CONFIG = [
@@ -220,7 +182,14 @@
     let isSpinning = false;
     let autoPlay = false;
 
-    // --- 3. Pixi 初始化 ---
+    // --- 3. 音频初始化 (强烈建议替换为本地文件) ---
+    // 请下载文件到 public/sounds/ 目录，然后替换 src 为 ['/sounds/click.mp3'] 等
+    const sndClick = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'], volume: 0.5 });
+    const sndSpin  = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3'], loop: true, volume: 0.4 });
+    const sndWin   = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3'], volume: 0.8 });
+    const sndStop  = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3'], volume: 0.5 });
+
+    // --- 4. Pixi 绘图 ---
     const app = new PIXI.Application({ width: 470, height: 470, backgroundColor: 0x000000, backgroundAlpha: 0 });
     document.getElementById('game-container').appendChild(app.view);
     const squares = [];
@@ -238,8 +207,6 @@
         centerText.anchor.set(0.5); centerText.x = 235; centerText.y = 235;
         app.stage.addChild(centerText);
 
-        // 坐标修正：适配 470px 宽度
-        // (470 - (7*56 + 6*4)) / 2 = (470 - 416) / 2 = 27
         const size = 56; const gap = 4; const step = size + gap;
         const startX = 27; const startY = 27;
 
@@ -257,7 +224,6 @@
             bg.drawRoundedRect(0, 0, size, size, 8); bg.endFill();
             container.addChild(bg);
 
-            // 这里以后换图片
             const text = new PIXI.Text(index, {fontSize: 14, fill: '#555'});
             text.position.set(20, 20);
             container.addChild(text);
@@ -289,24 +255,39 @@
             const btn = document.createElement('button');
             btn.className = `btn-fruit ${fruit.color}`; btn.innerText = fruit.name;
 
-            // 触摸反馈 + 下注
             btn.onclick = () => {
-                tg.HapticFeedback.impactOccurred('light'); // TG 震动
+                tgTrigger('light'); // 封装的震动函数
                 addBet(fruit.id);
             };
             unit.appendChild(lcd); unit.appendChild(btn); container.appendChild(unit);
         });
     }
 
+    // 安全的触发震动
+    function tgTrigger(style) {
+        if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.impactOccurred(style);
+        }
+    }
+
+    // 安全的触发通知震动
+    function tgNotify(type) {
+        if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.notificationOccurred(type);
+        }
+    }
+
     function addBet(id) {
         if(isSpinning) return;
+        sndClick.play();
         currentBets[id] += 10;
         document.getElementById(`bet-val-${id}`).innerText = currentBets[id];
     }
 
     function resetBets() {
         if(isSpinning) return;
-        tg.HapticFeedback.impactOccurred('medium');
+        sndClick.play();
+        tgTrigger('medium');
         for(let id=1; id<=8; id++) {
             currentBets[id] = 0;
             document.getElementById(`bet-val-${id}`).innerText = 0;
@@ -315,14 +296,12 @@
 
     function toggleAuto() {
         autoPlay = !autoPlay;
-        tg.HapticFeedback.notificationOccurred(autoPlay ? 'success' : 'warning');
+        tgNotify(autoPlay ? 'success' : 'warning');
         alert(autoPlay ? '自动模式开启' : '自动模式关闭');
     }
 
     async function refreshBalance() {
         try {
-            // 如果在 TG 内，会自动带上 Header，后端中间件验证后通过
-            // 如果在浏览器测试，因为没 Header，后端可能需要临时处理或使用临时 Token
             const res = await axios.get('/api/user/balance');
             document.getElementById('balanceDisplay').innerText = String(res.data.data.balance).padStart(8, '0');
         } catch (e) { console.error(e); }
@@ -331,13 +310,16 @@
     async function spin() {
         const totalBet = Object.values(currentBets).reduce((a,b)=>a+b, 0);
         if (totalBet === 0) {
-            tg.HapticFeedback.notificationOccurred('error');
+            tgNotify('error');
             return alert("请先下注！");
         }
 
         isSpinning = true;
-        tg.HapticFeedback.impactOccurred('heavy'); // 开始时重震动
+        tgTrigger('heavy');
         document.getElementById('winDisplay').innerText = "0";
+
+        sndWin.stop();
+        sndSpin.play();
 
         let idx = 0;
         let timer = setInterval(() => { idx++; updateHighlight(idx % 24); }, 50);
@@ -350,24 +332,26 @@
                 clearInterval(timer);
                 updateHighlight(data.stop_index);
                 isSpinning = false;
+                sndSpin.stop();
 
-                // TG 震动反馈结果
                 if (data.win_amount > 0) {
-                    tg.HapticFeedback.notificationOccurred('success');
+                    tgNotify('success');
                 } else {
-                    tg.HapticFeedback.impactOccurred('light');
+                    tgTrigger('light');
                 }
 
                 document.getElementById('balanceDisplay').innerText = String(data.balance).padStart(8, '0');
                 document.getElementById('winDisplay').innerText = data.win_amount;
 
                 if(data.win_amount > 0) {
-                    // 简单的闪烁
+                    sndWin.play();
                     let blink = 0;
                     let blinkTimer = setInterval(() => {
                         document.getElementById('winDisplay').style.color = blink++ % 2 === 0 ? '#fff' : '#ff5252';
                         if(blink > 10) clearInterval(blinkTimer);
                     }, 100);
+                } else {
+                    sndStop.play();
                 }
 
                 if(autoPlay && data.balance > totalBet) {
@@ -378,10 +362,24 @@
 
         } catch (err) {
             clearInterval(timer);
+            sndSpin.stop();
             isSpinning = false;
-            tg.showAlert("网络错误或余额不足");
+            if(window.Telegram.WebApp.showAlert) {
+                window.Telegram.WebApp.showAlert("网络错误或余额不足");
+            } else {
+                alert("网络错误或余额不足");
+            }
         }
     }
+
+    // iOS 音频解锁
+    let audioUnlocked = false;
+    document.body.addEventListener('click', () => {
+        if (audioUnlocked) return;
+        if (Howler.ctx && Howler.ctx.state !== 'running') {
+            Howler.ctx.resume().then(() => { audioUnlocked = true; });
+        }
+    }, { once: true });
 </script>
 </body>
 </html>
