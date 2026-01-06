@@ -20,6 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        URL::forceScheme('https');
+        // 添加下面这一行判断，强制生产环境或所有环境使用 HTTPS
+        if (app()->environment('production') || true) { // 这里的 || true 表示强制开启，适合你现在的情况
+            URL::forceScheme('https');
+        }
     }
 }
