@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 核心：禁止缩放，适配移动端视口 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fruit Machine TMA</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://pixijs.download/v7.x/pixi.min.js"></script>
+    <!-- 引入 Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+
+        /* 移动端重置样式 */
+        body {
+            background-color: #000;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* 禁止滚动 */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* 顶对齐 */
+            height: 100vh;
+            font-family: sans-serif;
+            touch-action: manipulation; /* 优化点击 */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 游戏整体缩放容器 */
+        #app-scaler {
+            transform-origin: top center; /* 从顶部中间开始缩放 */
+            width: 500px; /* 设定基准宽度，略大于 Canvas */
+            padding-bottom: 50px;
+        }
+
+        .machine-body {
+            width: 100%;
+            background: linear-gradient(to bottom, #d32f2f, #8e0000);
+            border-radius: 0 0 30px 30px; /* 手机上顶部不需要圆角 */
+            padding: 15px;
+            box-sizing: border-box; /* 防止padding撑大 */
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            position: relative;
+            border-bottom: 5px solid #ff4d4d;
+            border-left: 2px solid #a00;
+            border-right: 2px solid #a00;
+        }
+
+        /* 顶部装饰灯 */
+        .top-lights { display: flex; justify-content: space-around; margin-bottom: 10px; }
+        .bulb { width: 12px; height: 12px; background: #ffeb3b; border-radius: 50%; box-shadow: 0 0 8px #ffeb3b; animation: blink 1s infinite alternate; }
+        @keyframes blink { from { opacity: 0.5; } to { opacity: 1; } }
+
+        /* 记分牌 */
+        .screen-panel {
+            background: linear-gradient(to bottom, #1565c0, #0d47a1);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 2px solid #42a5f5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .lcd-group { text-align: center; flex: 1; }
+        .lcd-label { color: #81d4fa; font-size: 10px; margin-bottom: 2px; font-weight: bold; }
+        .lcd-display { background: #000; border: 1px solid #555; border-radius: 4px; padding: 2px 5px; margin: 0 5px;}
+        .lcd-value { font-family: 'Orbitron', monospace; color: #ff5252; font-size: 20px; letter-spacing: 1px; }
+
+        /* Pixi 画布容器 */
+        #game-container {
+            width: 470px; /* 适配内部宽度 */
+            height: 470px;
+            margin: 0 auto 10px auto;
+            background: #fce4ec;
+            border-radius: 10px;
+            border: 4px solid #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: radial-gradient(circle, #fff8e1, #ffecb3);
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.2);
+        }
+
+        /* 底部控制区 */
+        .control-panel {
+            background: linear-gradient(to bottom, #1976d2, #0d47a1);
+            border-radius: 15px;
+            padding: 10px;
+            border-top: 2px solid #64b5f6;
+        }
+
+        .func-buttons { display: flex; justify-content: space-between; margin-bottom: 10px; gap: 5px; }
+        .btn-large {
+            flex: 1; height: 50px; border-radius: 8px; border: none; font-weight: bold; font-size: 14px;
+            cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.4); color: white;
+            font-family: sans-serif;
+        }
+        .btn-large:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.4); }
+
+        .btn-green { background: linear-gradient(#66bb6a, #2e7d32); }
+        .btn-purple { background: linear-gradient(#ab47bc, #6a1b9a); }
+        .btn-yellow { background: linear-gradient(#ffee58, #fbc02d); color: #b71c1c; font-size: 20px; font-weight: 800;}
+        .btn-blue { background: linear-gradient(#42a5f5, #1565c0); }
+
+        /* 水果下注按钮 */
+        .bet-buttons { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+        .bet-unit { display: flex; flex-direction: column; align-items: center; }
+        .bet-lcd {
+            background: #000; color: #fff; font-family: 'Orbitron', monospace; width: 100%;
+            text-align: center; padding: 2px 0; margin-bottom: 3px; border-radius: 2px;
+            border: 1px solid #555; font-size: 10px;
+        }
+        .btn-fruit {
+            width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
+            box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 3px 6px rgba(255,255,255,0.3);
+            font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000;
+            display: flex; align-items: center; justify-content: center; font-size: 10px; padding: 0;
+        }
+        .btn-fruit:active { transform: translateY(3px); box-shadow: 0 0 0 rgba(0,0,0,0.5); }
+
+        /* 颜色类 */
+        .c-bar { background: linear-gradient(#81c784, #2e7d32); }
+        .c-77 { background: linear-gradient(#ba68c8, #7b1fa2); }
+        .c-star { background: linear-gradient(#fff176, #fbc02d); color: #333; }
+        .c-water { background: linear-gradient(#ef5350, #c62828); }
+        .c-bell { background: linear-gradient(#ffca28, #ff6f00); }
+        .c-lemon { background: linear-gradient(#aed581, #558b2f); }
+        .c-orange { background: linear-gradient(#ffa726, #e65100); }
+        .c-apple { background: linear-gradient(#ef5350, #b71c1c); }
+
+    </style>
+</head>
+<body>
+
+<!-- 缩放容器 -->
+<div id="app-scaler">
+    <div class="machine-body">
+
+        <div class="top-lights">
+            <div class="bulb"></div><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div>
+        </div>
+
+        <div class="screen-panel">
+            <div class="lcd-group">
+                <div class="lcd-label">WIN</div>
+                <div class="lcd-display"><div class="lcd-value" id="winDisplay">0</div></div>
+            </div>
+            <div class="lcd-group">
+                <div class="lcd-label">CREDIT</div>
+                <div class="lcd-display"><div class="lcd-value" id="balanceDisplay">---</div></div>
+            </div>
+        </div>
+
+        <div id="game-container"></div>
+
+        <div class="control-panel">
+            <div class="func-buttons">
+                <button class="btn-large btn-green" onclick="resetBets()">RESET</button>
+                <button class="btn-large btn-purple" onclick="toggleAuto()">AUTO</button>
+                <button class="btn-large btn-yellow" id="startBtn" onclick="spin()">GO</button>
+            </div>
+
+            <div class="bet-buttons" id="betButtonsContainer"></div>
+
+            <div style="display:flex; justify-content:space-between; margin-top:5px; color:#fff; font-size:9px; padding:0 2px; opacity: 0.7;">
+                <span>x50</span> <span>x40</span> <span>x30</span> <span>x20</span>
+                <span>x20</span> <span>x15</span> <span>x10</span> <span>x5</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- 0. Telegram Mini App 初始化 ---
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand(); // 强制全屏
+
+    // 设置 Header 背景色与机身融合
+    tg.setHeaderColor('#d32f2f');
+    tg.setBackgroundColor('#000000');
+
+    // 配置 Axios (把 TG 的 initData 发给后端验证)
+    if (tg.initData) {
+        axios.defaults.headers.common['X-Telegram-Data'] = tg.initData;
+    } else {
+        console.warn('未在 Telegram 环境中运行，将使用测试模式');
+    }
+
+    // --- 1. 屏幕适配算法 (核心) ---
+    function resizeApp() {
+        const scaler = document.getElementById('app-scaler');
+        const targetWidth = 500; // 我们的设计基准宽度
+        const screenWidth = window.innerWidth;
+
+        // 计算缩放比例
+        let scale = screenWidth / targetWidth;
+        if (scale > 1) scale = 1; // 桌面端不放大
+
+        scaler.style.transform = `scale(${scale})`;
+
+        // 修正高度，防止下方留白过多
+        document.body.style.height = (scaler.offsetHeight * scale) + 'px';
+    }
+    window.addEventListener('resize', resizeApp);
+    resizeApp(); // 立即执行一次
+
+    // --- 2. 游戏配置 ---
+    const FRUIT_CONFIG = [
+        { id: 1, name: "BAR", color: "c-bar" }, { id: 2, name: "77",  color: "c-77" },
+        { id: 3, name: "星星", color: "c-star" }, { id: 4, name: "西瓜", color: "c-water" },
+        { id: 5, name: "铃铛", color: "c-bell" }, { id: 6, name: "柠檬", color: "c-lemon" },
+        { id: 7, name: "橘子", color: "c-orange" }, { id: 8, name: "苹果", color: "c-apple" }
+    ];
+
+    let currentBets = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0 };
+    let isSpinning = false;
+    let autoPlay = false;
+
+    // --- 3. Pixi 初始化 ---
+    const app = new PIXI.Application({ width: 470, height: 470, backgroundColor: 0x000000, backgroundAlpha: 0 });
+    document.getElementById('game-container').appendChild(app.view);
+    const squares = [];
+
+    initBoard();
+    initBetButtons();
+    refreshBalance();
+
+    function initBoard() {
+        const centerStyle = new PIXI.TextStyle({
+            fill: ['#d4af37', '#b8860b'], fontSize: 48, fontWeight: 'bold',
+            dropShadow: true, dropShadowColor: '#000000', dropShadowBlur: 4, dropShadowDistance: 3
+        });
+        const centerText = new PIXI.Text('财神到', centerStyle);
+        centerText.anchor.set(0.5); centerText.x = 235; centerText.y = 235;
+        app.stage.addChild(centerText);
+
+        // 坐标修正：适配 470px 宽度
+        // (470 - (7*56 + 6*4)) / 2 = (470 - 416) / 2 = 27
+        const size = 56; const gap = 4; const step = size + gap;
+        const startX = 27; const startY = 27;
+
+        const coords = [];
+        for(let i=0; i<7; i++) coords.push({x: startX + i*step, y: startY});
+        for(let i=1; i<=6; i++) coords.push({x: startX + 6*step, y: startY + i*step});
+        for(let i=5; i>=0; i--) coords.push({x: startX + i*step, y: startY + 6*step});
+        for(let i=5; i>=1; i--) coords.push({x: startX, y: startY + i*step});
+
+        coords.forEach((pos, index) => {
+            const container = new PIXI.Container();
+            container.x = pos.x; container.y = pos.y;
+            const bg = new PIXI.Graphics();
+            bg.lineStyle(2, 0x8d6e63); bg.beginFill(0xffecb3);
+            bg.drawRoundedRect(0, 0, size, size, 8); bg.endFill();
+            container.addChild(bg);
+
+            // 这里以后换图片
+            const text = new PIXI.Text(index, {fontSize: 14, fill: '#555'});
+            text.position.set(20, 20);
+            container.addChild(text);
+
+            const highlight = new PIXI.Graphics();
+            highlight.lineStyle(4, 0xff0000); highlight.beginFill(0xffeb3b, 0.3);
+            highlight.drawRoundedRect(-2, -2, size+4, size+4, 8); highlight.endFill();
+            highlight.visible = false;
+            container.addChild(highlight);
+
+            squares.push({ highlight: highlight, id: index });
+            app.stage.addChild(container);
+        });
+        updateHighlight(0);
+    }
+
+    function updateHighlight(index) {
+        squares.forEach(sq => sq.highlight.visible = false);
+        if(squares[index]) squares[index].highlight.visible = true;
+    }
+
+    function initBetButtons() {
+        const container = document.getElementById('betButtonsContainer');
+        FRUIT_CONFIG.forEach(fruit => {
+            const unit = document.createElement('div');
+            unit.className = 'bet-unit';
+            const lcd = document.createElement('div');
+            lcd.className = 'bet-lcd'; lcd.id = `bet-val-${fruit.id}`; lcd.innerText = '0';
+            const btn = document.createElement('button');
+            btn.className = `btn-fruit ${fruit.color}`; btn.innerText = fruit.name;
+
+            // 触摸反馈 + 下注
+            btn.onclick = () => {
+                tg.HapticFeedback.impactOccurred('light'); // TG 震动
+                addBet(fruit.id);
+            };
+            unit.appendChild(lcd); unit.appendChild(btn); container.appendChild(unit);
+        });
+    }
+
+    function addBet(id) {
+        if(isSpinning) return;
+        currentBets[id] += 10;
+        document.getElementById(`bet-val-${id}`).innerText = currentBets[id];
+    }
+
+    function resetBets() {
+        if(isSpinning) return;
+        tg.HapticFeedback.impactOccurred('medium');
+        for(let id=1; id<=8; id++) {
+            currentBets[id] = 0;
+            document.getElementById(`bet-val-${id}`).innerText = 0;
+        }
+    }
+
+    function toggleAuto() {
+        autoPlay = !autoPlay;
+        tg.HapticFeedback.notificationOccurred(autoPlay ? 'success' : 'warning');
+        alert(autoPlay ? '自动模式开启' : '自动模式关闭');
+    }
+
+    async function refreshBalance() {
+        try {
+            // 如果在 TG 内，会自动带上 Header，后端中间件验证后通过
+            // 如果在浏览器测试，因为没 Header，后端可能需要临时处理或使用临时 Token
+            const res = await axios.get('/api/user/balance');
+            document.getElementById('balanceDisplay').innerText = String(res.data.data.balance).padStart(8, '0');
+        } catch (e) { console.error(e); }
+    }
+
+    async function spin() {
+        const totalBet = Object.values(currentBets).reduce((a,b)=>a+b, 0);
+        if (totalBet === 0) {
+            tg.HapticFeedback.notificationOccurred('error');
+            return alert("请先下注！");
+        }
+
+        isSpinning = true;
+        tg.HapticFeedback.impactOccurred('heavy'); // 开始时重震动
+        document.getElementById('winDisplay').innerText = "0";
+
+        let idx = 0;
+        let timer = setInterval(() => { idx++; updateHighlight(idx % 24); }, 50);
+
+        try {
+            const res = await axios.post('/api/game/spin', { bets: currentBets });
+            const data = res.data.data;
+
+            setTimeout(() => {
+                clearInterval(timer);
+                updateHighlight(data.stop_index);
+                isSpinning = false;
+
+                // TG 震动反馈结果
+                if (data.win_amount > 0) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                } else {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+
+                document.getElementById('balanceDisplay').innerText = String(data.balance).padStart(8, '0');
+                document.getElementById('winDisplay').innerText = data.win_amount;
+
+                if(data.win_amount > 0) {
+                    // 简单的闪烁
+                    let blink = 0;
+                    let blinkTimer = setInterval(() => {
+                        document.getElementById('winDisplay').style.color = blink++ % 2 === 0 ? '#fff' : '#ff5252';
+                        if(blink > 10) clearInterval(blinkTimer);
+                    }, 100);
+                }
+
+                if(autoPlay && data.balance > totalBet) {
+                    setTimeout(spin, 1500);
+                }
+
+            }, 2000);
+
+        } catch (err) {
+            clearInterval(timer);
+            isSpinning = false;
+            tg.showAlert("网络错误或余额不足");
+        }
+    }
+</script>
+</body>
+</html>
