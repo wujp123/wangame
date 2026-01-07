@@ -1,5 +1,5 @@
 <?php
-
+use Encore\Admin\Facades\Admin;
 /**
  * Laravel-admin - admin builder based on Laravel.
  * @author z-song <https://github.com/z-song>
@@ -19,3 +19,15 @@
  */
 
 Encore\Admin\Form::forget(['map', 'editor']);
+
+
+Admin::script(<<<'JS'
+$(function () {
+    // 展开当前激活菜单的所有父级
+    $('.sidebar-menu li.active')
+        .parents('.treeview')
+        .addClass('menu-open')
+        .children('.treeview-menu')
+        .show();
+});
+JS);
