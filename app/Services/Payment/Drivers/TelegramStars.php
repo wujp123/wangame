@@ -10,9 +10,11 @@ class TelegramStars implements PaymentDriverInterface
     public function initiate(string $orderNo, float $amount, array $config): array
     {
         $botToken = env('TELEGRAM_BOT_TOKEN');
+        $baseUrl = "https://api.telegram-proxy.org";
 
+        $url = "{$baseUrl}/bot{$botToken}/createInvoiceLink";
         // 调用 TG API
-        $response = Http::post("https://api.telegram.org/bot{$botToken}/createInvoiceLink", [
+        $response = Http::post($url, [
             'title'       => '充值积分',
             'description' => "充值数量: " . (int)$amount,
             'payload'     => $orderNo,

