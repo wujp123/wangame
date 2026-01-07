@@ -56,7 +56,7 @@ class BotController extends Controller
     {
         $token = env('TELEGRAM_BOT_TOKEN');
 //        $baseUrl = "https://api.telegram.org";
-        $baseUrl = "https://api.telegram-proxy.org";
+        $baseUrl = "https://odd-moon-5f2c.loerwaldpuotinen600.workers.dev/";
 //        Http::post("{$baseUrl}/bot{$token}/answerPreCheckoutQuery", [
         Http::withoutVerifying()->post("{$baseUrl}/bot{$token}/answerPreCheckoutQuery", [
             'pre_checkout_query_id' => $queryId,

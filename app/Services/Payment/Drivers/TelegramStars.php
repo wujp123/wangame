@@ -10,7 +10,7 @@ class TelegramStars implements PaymentDriverInterface
     public function initiate(string $orderNo, float $amount, array $config): array
     {
         $botToken = env('TELEGRAM_BOT_TOKEN');
-        $baseUrl = "https://api.telegram-proxy.org";
+        $baseUrl = "https://odd-moon-5f2c.loerwaldpuotinen600.workers.dev/";
 
         $url = "{$baseUrl}/bot{$botToken}/createInvoiceLink";
         // 调用 TG API
