@@ -15,4 +15,12 @@ class Transaction extends Model
         'reference_id', // 关联ID (比如 GameLog ID)
         'remark'
     ];
+
+    protected $guarded = [];
+
+    // 关联用户
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
