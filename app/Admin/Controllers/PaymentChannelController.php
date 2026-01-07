@@ -25,11 +25,8 @@ class PaymentChannelController extends AdminController
 
         $grid->column('slug', '唯一标识(Slug)')->copyable()->help('前端接口传参用');
 
-        $grid->column('driver', '驱动类型')->using([
-            'Manual' => '人工/扫码 (Manual)',
-            'UsdtApi' => 'USDT 接口 (UsdtApi)',
-            'Alipay' => '支付宝免签 (Alipay)',
-        ], '未知驱动');
+        $grid->column('driver', '驱动类型')
+            ->using(PaymentService::getOptions(), '未知驱动');
 
         $grid->column('exchange_rate', '汇率 (1:N)')->editable();
 
@@ -88,14 +85,11 @@ class PaymentChannelController extends AdminController
             ->help('前端调用时使用的代码，例如: usdt_trc20');
 
         $form->select('driver', '处理驱动')
-            ->options([
-                'Manual'  => '人工/静态地址 (Manual)',
-                'UsdtApi' => 'USDT API接口 (UsdtApi)',
-                'Alipay'  => '支付宝 (Alipay)',
-            ])
+            ->options(PaymentService::getOptions()) // 自动获取所有驱动
             ->default('Manual')
             ->rules('required')
-            ->help('对应 App\Services\Payment\Drivers 下的类名');
+            ->help('请选择对应的支付处理逻辑');
+
 
         $form->decimal('exchange_rate', '兑换汇率')
             ->default(1.00)
