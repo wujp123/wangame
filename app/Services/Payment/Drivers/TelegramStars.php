@@ -14,8 +14,8 @@ class TelegramStars implements PaymentDriverInterface
 
         $url = "{$baseUrl}/bot{$botToken}/createInvoiceLink";
         // 调用 TG API
-//        $response = Http::post($url, [
-        $response = Http::withoutVerifying()->post($url, [
+        $response = Http::post($url, [
+//        $response = Http::withoutVerifying()->post($url, [
             'title'       => '充值积分',
             'description' => "充值数量: " . (int)$amount,
             'payload'     => $orderNo,
