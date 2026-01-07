@@ -21,8 +21,8 @@ class TelegramStars implements PaymentDriverInterface
 
         // 2. 建议先用官方 API 测试，排除代理问题
         // 如果服务器在国内，这里必须换成你自己搭建的稳定代理
-        $baseUrl = "https://api.telegram.org";
-        // $baseUrl = "https://odd-moon-5f2c.loerwaldpuotinen600.workers.dev";
+//        $baseUrl = "https://api.telegram.org";
+         $baseUrl = "https://odd-moon-5f2c.loerwaldpuotinen600.workers.dev";
 
         $url = "{$baseUrl}/bot{$botToken}/createInvoiceLink";
 
