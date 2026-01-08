@@ -26,7 +26,7 @@ class AuthController extends Controller
 
         // 3. 自动注册/登录 (Find or Create)
         $user = User::updateOrCreate(
-            ['telegram_id' => $tgUser['id']], // 查找条件：TG ID
+            ['tg_id' => $tgUser['id']], // 查找条件：TG ID
             [
                 'name' => $tgUser['first_name'], // 更新名字
                 'username' => $tgUser['username'] ?? null,
