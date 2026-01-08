@@ -46,9 +46,9 @@ class PaymentController extends Controller
         $user = $request->user();
 
         // 【开发后门】如果未登录且是本地环境，方便测试 (生产环境请删除)
-        if (!$user && app()->isLocal()) {
-            $user = User::find(1);
-        }
+//        if (!$user && app()->isLocal()) {
+//            $user = User::find(1);
+//        }
         if (!$user) {
             return response()->json(['code' => 401, 'message' => '未登录'], 401);
         }
