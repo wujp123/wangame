@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
+use App\Models\User;
 
 Route::get('/', function () {
     return view('welcome');
@@ -24,5 +25,22 @@ Route::get('/clear-all', function() {
     } catch (\Exception $e) {
         // 如果报错，可能是权限问题，尝试方法二
         return "清理失败: " . $e->getMessage();
+    }
+});
+
+Route::get('/test-db-save', function () {
+    try {
+        // 尝试手动创建一条数据
+        $user = User::create([
+            'name' => 'DB Tester',
+            'telegram_id' => 123456789, // 测试写入这个关键字段
+            'username' => 'test_user',
+            'password' => bcrypt('123456'),
+        ]);
+
+        return "✅ 写入成功！新用户 ID: " . $user->id . "<br>请去数据库 users 表看看有没有这条数据。";
+    } catch (\Exception $e) {
+        // 把具体错误打印出来
+        return "❌ 写入失败！错误信息：<br>" . $e->getMessage();
     }
 });
