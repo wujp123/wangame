@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -13,35 +14,51 @@ class AuthController extends Controller
     {
         $initData = $request->input('init_data');
 
+        // 0. 基本判空
+        if (!$initData) {
+            return response()->json(['message' => '未提供 init_data'], 400);
+        }
+
         // 1. ★★★ 核心安全验证 ★★★
         $webAppData = $this->validateTelegramData($initData);
 
         if (!$webAppData) {
+            Log::warning('Telegram 登录签名验证失败', ['data' => $initData]);
             return response()->json(['message' => '身份验证失败 (Invalid Signature)'], 401);
         }
 
         // 2. 解析用户信息
-        // 验证通过后，$webAppData['user'] 里就是真实的 TG 用户数据
-        $tgUser = json_decode($webAppData['user'], true);
+        // 注意：$webAppData['user'] 是一个 JSON 字符串，必须解码
+        $tgUser = json_decode($webAppData['user'] ?? '{}', true);
+
+        if (!isset($tgUser['id'])) {
+            Log::error('Telegram 数据解析缺少 ID', ['user_data' => $webAppData]);
+            return response()->json(['message' => '无效的用户数据'], 400);
+        }
+
+        // 记录一下日志，方便调试
+        Log::info('Telegram 用户登录:', ['id' => $tgUser['id'], 'name' => $tgUser['first_name']]);
 
         // 3. 自动注册/登录 (Find or Create)
+        // ⚠️ 请确保数据库字段是 'telegram_id'，如果是 'tg_id' 请自行修改下方代码
         $user = User::updateOrCreate(
-            ['tg_id' => $tgUser['id']], // 查找条件：TG ID
+            ['telegram_id' => $tgUser['id']], // 查找条件
             [
-                'name' => $tgUser['first_name'], // 更新名字
+                'name'     => $tgUser['first_name'] . (isset($tgUser['last_name']) ? ' ' . $tgUser['last_name'] : ''),
                 'username' => $tgUser['username'] ?? null,
-                // 给一个随机密码，因为根本用不到密码登录
-                'password' => bcrypt(Str::random(32)),
+                // 如果 TG 传了头像，顺便存一下 (数据库需有 avatar 字段，没有就删掉这行)
+                // 'avatar'   => $tgUser['photo_url'] ?? null,
+                'password' => bcrypt(Str::random(32)), // 随机密码
             ]
         );
 
         // 4. 颁发 Sanctum Token
-        // $user->tokens()->delete(); // 可选：由你决定是否允许单点登录
+        // $user->tokens()->delete(); // 可选：是否踢掉其他设备的登录
         $token = $user->createToken('webapp')->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'user' => $user
+            'user'  => $user
         ]);
     }
 
