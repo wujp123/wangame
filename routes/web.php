@@ -33,7 +33,7 @@ Route::get('/test-db-save', function () {
         // 尝试手动创建一条数据
         $user = User::create([
             'name' => 'DB Tester',
-            'telegram_id' => 123456789, // 测试写入这个关键字段
+            'tg_id' => 123456789, // 测试写入这个关键字段
             'username' => 'test_user',
             'password' => bcrypt('123456'),
         ]);
