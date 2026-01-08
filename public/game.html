@@ -152,9 +152,20 @@
             background: #e3f2fd; border-color: #2196f3; color: #1565c0; font-weight: bold;
             box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
         }
+
+        /* Loading 遮罩 */
+        #loading-mask {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 10000; display: flex;
+            justify-content: center; align-items: center; color: #fff;
+            font-family: 'Orbitron', sans-serif; font-size: 18px;
+        }
     </style>
 </head>
 <body>
+
+<!-- Loading -->
+<div id="loading-mask">INITIALIZING...</div>
 
 <div id="app-scaler">
     <div class="machine-body">
@@ -201,7 +212,6 @@
             <button onclick="closeWallet()" class="close-btn">×</button>
         </div>
 
-        <!-- 标签页切换 -->
         <div class="modal-tabs">
             <button id="tabDep" class="active" onclick="switchTab('deposit')">充值</button>
             <button id="tabWdr" onclick="switchTab('withdraw')">提现</button>
@@ -209,13 +219,11 @@
 
         <!-- 充值面板 -->
         <div id="panelDeposit" class="tab-panel">
-            <!-- 1. 动态加载的通道按钮 -->
             <p class="hint">请选择支付方式：</p>
             <div id="channelList" class="channel-grid">
                 <div style="text-align:center; color:#999; font-size:12px;">正在加载通道...</div>
             </div>
 
-            <!-- 2. 金额输入区 (默认隐藏，选了通道才显示) -->
             <div id="depositInputArea" style="display:none; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
                 <p class="hint">
                     当前汇率: <span id="currentRate" style="color:#d32f2f; font-weight:bold;">1.0</span>
@@ -228,10 +236,7 @@
                 <p class="hint" style="margin-top:5px;">预计到账: <span id="calcPoints" style="color:#2e7d32; font-weight:bold;">0</span> 积分</p>
             </div>
 
-            <!-- 3. 支付结果展示区 -->
-            <div id="depResult" style="display:none; margin-top:15px; background:#f9f9f9; padding:10px; border-radius:5px; border:1px solid #ddd;">
-                <!-- 动态内容 -->
-            </div>
+            <div id="depResult" style="display:none; margin-top:15px; background:#f9f9f9; padding:10px; border-radius:5px; border:1px solid #ddd;"></div>
         </div>
 
         <!-- 提现面板 -->
@@ -253,49 +258,114 @@
         tg.setHeaderColor('#b71c1c');
     } catch(e){}
 
-    // --- 1. 全局状态 ---
+    // --- 1. 全局拦截器 (处理 Token 过期) ---
+    axios.interceptors.response.use(response => {
+        return response;
+    }, error => {
+        if (error.response && error.response.status === 401) {
+            console.warn("Token expired or unauthorized");
+            // 可以在这里选择重新触发登录逻辑，或者提示用户
+        }
+        return Promise.reject(error);
+    });
+
+    // --- 2. 核心状态 ---
     let FRUIT_CONFIG = [];
     let BOARD_LAYOUT = [];
     let currentBets = {};
     let isSpinning = false;
     let autoPlay = false;
-    // 钱包当前选中的通道
     let activeChannel = null;
 
-    // --- 2. 核心：登录逻辑 ---
+    // --- 3. 登录逻辑 (增强版) ---
     async function loginWithTelegram() {
-
-        // 1. 尝试从本地获取旧 Token
         let token = localStorage.getItem('game_token');
+        let isSuccess = false;
 
-        // 2. 如果在 TG 环境内，优先使用 initData 换取新 Token (自动登录)
+        // 优先使用 Telegram 无感登录
         if (tg.initData) {
             try {
-                // 注意：这里 URL 要和你后端路由匹配
+                // 后端路由需匹配: Route::post('/auth/telegram', ...)
                 const res = await axios.post('/api/auth/telegram', {
-                    init_data: tg.initData // 后端接收的是 init_data (下划线)
+                    init_data: tg.initData
                 });
-
                 if (res.data.token) {
                     token = res.data.token;
                     localStorage.setItem('game_token', token);
-                    console.log("自动登录成功:", res.data.user?.name);
+                    console.log("TG Auto-Login Success:", res.data.user?.name);
+                    isSuccess = true;
                 }
             } catch (e) {
-                console.error("自动登录失败:", e);
-                // 即使自动登录失败，如果本地有旧 token，也可以试着用
+                console.error("Auto-Login Failed:", e);
             }
         }
 
-        // 3. 配置全局 Axios Header
+        // 如果不在 TG 环境，检查本地是否有旧 Token (游客/测试模式)
         if (token) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        } else {
-            console.warn("未获取到 Token，可能是游客模式");
+            if (!isSuccess && !tg.initData) isSuccess = true; // 本地有 Token 也算一种成功
         }
+
+        return isSuccess;
     }
 
-    // --- 3. 屏幕适配 ---
+    // --- 4. 支付回调监听 (NOWPayments 跳转回来) ---
+    window.addEventListener('load', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const status = urlParams.get('status');
+
+        if (status === 'success') {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            alert("支付成功！系统确认中，积分稍后到账。");
+            setTimeout(refreshBalance, 3000);
+        } else if (status === 'cancel') {
+            alert("支付流程已取消");
+        }
+    });
+
+    // --- 5. 游戏启动流程 (串行执行) ---
+    (async function initGame() {
+        try {
+            // A. 等待登录
+            const loginOk = await loginWithTelegram();
+
+            // B. 如果登录彻底失败，停止加载
+            if (!loginOk && !localStorage.getItem('game_token')) {
+                document.getElementById('loading-mask').innerText = "Login Failed / Please open in Telegram";
+                return;
+            }
+
+            // C. 加载配置 (此接口建议在后端设为 public)
+            const res = await axios.get('/api/game/config');
+            const data = res.data.data;
+
+            FRUIT_CONFIG = data.fruits;
+            BOARD_LAYOUT = data.layout;
+
+            // 初始化数据
+            FRUIT_CONFIG.forEach(f => {
+                if(f.id !== 9) currentBets[f.id] = 0;
+            });
+
+            // 渲染
+            initBoard();
+            initBetButtons();
+            initOddsLabels();
+
+            // D. 加载余额 (需要权限)
+            await refreshBalance();
+
+            // E. 移除 Loading
+            document.getElementById('loading-mask').style.display = 'none';
+
+        } catch (e) {
+            console.error(e);
+            document.getElementById('loading-mask').innerText = "Connection Error";
+            document.getElementById('oddsDisplayContainer').innerText = "Config Load Failed";
+        }
+    })();
+
+    // --- 6. 屏幕适配 ---
     function resizeApp() {
         const scaler = document.getElementById('app-scaler');
         const scale = Math.min(window.innerWidth / 500, 1);
@@ -305,69 +375,21 @@
     window.addEventListener('resize', resizeApp);
     resizeApp();
 
-    // --- 4. 音频 ---
+    // --- 7. 音频引擎 ---
     const sndClick = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'], volume: 0.5 });
     const sndSpin  = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3'], loop: true, volume: 0.4 });
     const sndWin   = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3'], volume: 0.8 });
     const sndLucky = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3'], volume: 1.0 });
     const sndStop  = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3'], volume: 0.5 });
 
+    // 解决浏览器音频自动播放限制
     document.body.addEventListener('click', () => { if (Howler.ctx && Howler.ctx.state !== 'running') Howler.ctx.resume(); }, { once: true });
 
-    // --- 5. Pixi 引擎 ---
+    // --- 8. PixiJS 渲染 ---
     const app = new PIXI.Application({ width: 470, height: 470, backgroundColor: 0x000000, backgroundAlpha: 0 });
     document.getElementById('game-container').appendChild(app.view);
     const squares = [];
 
-    // --- 新增：检查支付回调状态 ---
-    window.addEventListener('load', () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const status = urlParams.get('status');
-
-        if (status === 'success') {
-            // 清除 URL 参数，防止刷新重复提示
-            window.history.replaceState({}, document.title, window.location.pathname);
-            alert("支付成功！积分稍后到账。");
-            // 稍微延迟一下刷新余额，等待后端 IPN 处理
-            setTimeout(refreshBalance, 2000);
-        } else if (status === 'cancel') {
-            alert("支付已取消");
-        }
-    });
-    // --- 6. 启动流程 ---
-    (async function initGame() {
-        try {
-            // 1. 先登录
-            await loginWithTelegram();
-
-            // 2. 获取配置
-            const res = await axios.get('/api/game/config');
-            const data = res.data.data;
-
-            FRUIT_CONFIG = data.fruits;
-            BOARD_LAYOUT = data.layout;
-
-            // 初始化下注数据
-            FRUIT_CONFIG.forEach(f => {
-                if(f.id !== 9) currentBets[f.id] = 0;
-            });
-
-            // 渲染界面
-            initBoard();
-            initBetButtons();
-            initOddsLabels();
-
-            // 获取初始余额
-            refreshBalance();
-
-        } catch (e) {
-            console.error(e);
-            document.getElementById('oddsDisplayContainer').innerText = "Load Failed";
-            // alert("游戏配置加载失败，请刷新");
-        }
-    })();
-
-    // 绘制盘面
     function initBoard() {
         const centerStyle = new PIXI.TextStyle({
             fill: ['#d4af37', '#b8860b'], fontSize: 48, fontWeight: 'bold',
@@ -381,7 +403,6 @@
         const startX = 27; const startY = 27;
         const coords = [];
 
-        // 生成环形坐标
         for(let i=0; i<7; i++) coords.push({x: startX + i*step, y: startY});
         for(let i=1; i<=6; i++) coords.push({x: startX + 6*step, y: startY + i*step});
         for(let i=5; i>=0; i--) coords.push({x: startX + i*step, y: startY + 6*step});
@@ -394,15 +415,13 @@
             const fruitId = BOARD_LAYOUT[index];
             const config = FRUIT_CONFIG.find(f => f.id === fruitId);
 
-            // 背景
             const bg = new PIXI.Graphics();
             bg.lineStyle(2, 0x5d4037);
-            if(fruitId === 9) bg.beginFill(0xe91e63); // Lucky 粉色
+            if(fruitId === 9) bg.beginFill(0xe91e63);
             else bg.beginFill(0xffecb3);
             bg.drawRoundedRect(0, 0, size, size, 8); bg.endFill();
             container.addChild(bg);
 
-            // 文字
             const textStr = config ? config.name : '?';
             const text = new PIXI.Text(textStr, {
                 fontSize: fruitId === 9 ? 12 : 14,
@@ -412,7 +431,6 @@
             text.anchor.set(0.5); text.position.set(size/2, size/2);
             container.addChild(text);
 
-            // 高亮框
             const highlight = new PIXI.Graphics();
             highlight.lineStyle(4, 0xff0000); highlight.beginFill(0xffeb3b, 0.3);
             highlight.drawRoundedRect(-2, -2, size+4, size+4, 8); highlight.endFill();
@@ -425,7 +443,6 @@
         updateHighlight(0);
     }
 
-    // 绘制下注按钮
     function initBetButtons() {
         const container = document.getElementById('betButtonsContainer');
         container.innerHTML = '';
@@ -486,7 +503,10 @@
             const data = res.data.data;
             document.getElementById('balanceDisplay').innerText = String(data.balance).padStart(8, '0');
             document.getElementById('jackpotDisplay').innerText = parseFloat(data.jackpot).toFixed(2);
-        } catch(e) {}
+        } catch(e) {
+            // 如果获取余额失败（如 Token 失效），显示 ---
+            document.getElementById('balanceDisplay').innerText = "---";
+        }
     }
 
     function updateHighlight(idx) {
@@ -515,7 +535,7 @@
 
     async function spin() {
         const totalBet = Object.values(currentBets).reduce((a,b)=>a+b, 0);
-        if (totalBet === 0) return alert("Please Bet First");
+        if (totalBet === 0) return alert("请先下注");
         isSpinning = true;
         tgTrigger('heavy');
         document.getElementById('winDisplay').innerText = "0";
@@ -561,26 +581,25 @@
             if(autoPlay && data.balance >= totalBet) {
                 setTimeout(spin, 1500);
             } else if (autoPlay) {
-                autoPlay = false; alert("Balance low, Auto stopped");
+                autoPlay = false; alert("余额不足，自动停止");
             }
 
         } catch (err) {
             isSpinning = false; sndSpin.stop();
             console.error(err);
-            alert("Error: " + (err.response?.data?.message || "Network Error"));
+            alert("Error: " + (err.response?.data?.message || "网络错误"));
         }
     }
 
     function tgTrigger(style) { if(window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred(style); }
     function tgNotify(type) { if(window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred(type); }
 
-    // --- 7. 钱包逻辑 (New) ---
+    // --- 9. 钱包逻辑 ---
 
     async function openWallet() {
         refreshBalance();
         document.getElementById('walletBalance').innerText = document.getElementById('balanceDisplay').innerText;
         document.getElementById('walletModal').style.display = 'flex';
-        // 加载通道
         await loadChannels();
     }
 
@@ -596,7 +615,6 @@
         document.getElementById('panelWithdraw').style.display = type === 'withdraw' ? 'block' : 'none';
     }
 
-    // 从后端获取通道列表
     async function loadChannels() {
         const container = document.getElementById('channelList');
         try {
@@ -639,7 +657,7 @@
         document.getElementById('calcPoints').innerText = points.toFixed(0);
     }
 
-    // 发起支付
+    // ★★★ 核心修复：充值逻辑 ★★★
     async function doDeposit() {
         if (!activeChannel) return alert("请选择支付方式");
         const amount = document.getElementById('depAmount').value;
@@ -649,7 +667,6 @@
         btn.disabled = true; btn.innerText = "处理中...";
 
         try {
-            // 1. 请求后端创建订单
             const res = await axios.post('/api/deposit', {
                 amount: amount,
                 method: activeChannel.slug
@@ -658,50 +675,44 @@
             const data = res.data.data;
             const resultArea = document.getElementById('depResult');
             resultArea.style.display = 'block';
+            resultArea.innerHTML = ""; // 清空旧内容
 
-            // === A. Telegram Stars 支付 (包含安卓兼容修复) ===
+            // A. Stars 支付 (兼容安卓)
             if (data.type === 'stars') {
-                resultArea.innerHTML = `<p style="text-align:center">正在拉起支付...</p>`;
+                resultArea.innerHTML = `<p style="text-align:center">正在拉起 Telegram 支付...</p>`;
 
-                // 关键修复：提取 slug，兼容安卓设备
                 let invoiceInput = data.url;
+                // 提取 slug
                 if (invoiceInput.includes('t.me/')) {
-                    // 如果后端返回的是完整链接，提取 $ 之后的部分
                     invoiceInput = invoiceInput.split('t.me/')[1];
                 }
 
                 tg.openInvoice(invoiceInput, function(status) {
                     if (status === 'paid') {
-                        tg.close(); // 关闭支付弹窗
+                        tg.close();
                         closeWallet();
                         alert("充值成功！");
                         refreshBalance();
                     } else if (status === 'cancelled') {
-                        // 安卓端有时支付成功也会报 cancelled，不弹窗报错，仅记录
-                        console.log("支付取消或完成");
+                        console.log("支付取消");
                     } else {
                         resultArea.innerHTML = `<p style="color:red;text-align:center">状态: ${status}</p>`;
                     }
                 });
             }
-
-            // === B. URL 跳转支付 (NOWPayments / USDT) ===
+            // B. URL 跳转 (USDT / NOWPayments)
             else if (data.type === 'url') {
-                resultArea.innerHTML = `<p style="text-align:center">正在跳转支付页面...</p>`;
+                resultArea.innerHTML = `<p style="text-align:center">正在跳转...</p>`;
 
-                // 在 TG 内使用 openLink 打开外部浏览器，体验更好
                 if (window.Telegram?.WebApp) {
                     tg.openLink(data.url);
                 } else {
                     window.location.href = data.url;
                 }
-
-                // 提示用户
-                alert("请在浏览器中完成支付，支付完成后请返回此处。");
+                alert("请在浏览器完成支付后返回");
                 closeWallet();
             }
-
-            // === C. 手动转账 (人工审核) ===
+            // C. 手动转账 (已移除模拟测试按钮)
             else if (data.type === 'manual') {
                 resultArea.innerHTML = `
                     <p style="font-size:12px; color:#555;">请转账 <b>${data.amount}</b> 至：</p>
@@ -720,18 +731,6 @@
         }
     }
 
-    // 模拟回调
-    async function mockPaySuccess(orderNo) {
-        if(!orderNo) return;
-        try {
-            await axios.post('/api/notify', { order_no: orderNo });
-            alert("系统确认到账！");
-            refreshBalance();
-            closeWallet();
-        } catch (e) { alert("模拟回调失败"); }
-    }
-
-    // 提现
     async function doWithdraw() {
         const amount = document.getElementById('wdrAmount').value;
         const address = document.getElementById('wdrAddress').value;
