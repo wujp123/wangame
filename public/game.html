@@ -264,29 +264,33 @@
 
     // --- 2. 核心：登录逻辑 ---
     async function loginWithTelegram() {
-        // A. 如果本地之前存过 Token，先自动带上
-        const localToken = localStorage.getItem('game_token');
-        if (localToken) {
-            axios.defaults.headers.common['Authorization'] = `Bearer ${localToken}`;
-        }
+        // 1. 尝试从本地获取旧 Token
+        let token = localStorage.getItem('game_token');
 
-        // B. 如果是在 Telegram 环境中，用 initData 去后端换取最新 Token
+        // 2. 如果在 TG 环境内，优先使用 initData 换取新 Token (自动登录)
         if (tg.initData) {
             try {
+                // 注意：这里 URL 要和你后端路由匹配
                 const res = await axios.post('/api/auth/telegram', {
-                    initData: tg.initData
+                    init_data: tg.initData // 后端接收的是 init_data (下划线)
                 });
-                const token = res.data.token;
 
-                localStorage.setItem('game_token', token);
-                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                console.log("TG 登录成功:", res.data.user.name);
+                if (res.data.token) {
+                    token = res.data.token;
+                    localStorage.setItem('game_token', token);
+                    console.log("自动登录成功:", res.data.user?.name);
+                }
             } catch (e) {
-                console.error("TG 登录验证失败:", e);
-                // 验证失败不清除本地 Token，防止断网时完全无法用，视业务需求而定
+                console.error("自动登录失败:", e);
+                // 即使自动登录失败，如果本地有旧 token，也可以试着用
             }
+        }
+
+        // 3. 配置全局 Axios Header
+        if (token) {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         } else {
-            console.warn("未检测到 TG 环境，仅使用本地缓存 Token 或进入演示模式");
+            console.warn("未获取到 Token，可能是游客模式");
         }
     }
 
@@ -314,6 +318,21 @@
     document.getElementById('game-container').appendChild(app.view);
     const squares = [];
 
+    // --- 新增：检查支付回调状态 ---
+    window.addEventListener('load', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const status = urlParams.get('status');
+
+        if (status === 'success') {
+            // 清除 URL 参数，防止刷新重复提示
+            window.history.replaceState({}, document.title, window.location.pathname);
+            alert("支付成功！积分稍后到账。");
+            // 稍微延迟一下刷新余额，等待后端 IPN 处理
+            setTimeout(refreshBalance, 2000);
+        } else if (status === 'cancel') {
+            alert("支付已取消");
+        }
+    });
     // --- 6. 启动流程 ---
     (async function initGame() {
         try {
@@ -629,6 +648,7 @@
         btn.disabled = true; btn.innerText = "处理中...";
 
         try {
+            // 1. 请求后端创建订单
             const res = await axios.post('/api/deposit', {
                 amount: amount,
                 method: activeChannel.slug
@@ -638,38 +658,58 @@
             const resultArea = document.getElementById('depResult');
             resultArea.style.display = 'block';
 
+            // === A. Telegram Stars 支付 (包含安卓兼容修复) ===
             if (data.type === 'stars') {
-                resultArea.innerHTML = `<p style="text-align:center">正在拉起 Telegram 支付...</p>`;
-                tg.openInvoice(data.url, function(status) {
+                resultArea.innerHTML = `<p style="text-align:center">正在拉起支付...</p>`;
+
+                // 关键修复：提取 slug，兼容安卓设备
+                let invoiceInput = data.url;
+                if (invoiceInput.includes('t.me/')) {
+                    // 如果后端返回的是完整链接，提取 $ 之后的部分
+                    invoiceInput = invoiceInput.split('t.me/')[1];
+                }
+
+                tg.openInvoice(invoiceInput, function(status) {
                     if (status === 'paid') {
-                        tg.close();
+                        tg.close(); // 关闭支付弹窗
                         closeWallet();
-                        alert("充值成功！积分已到账！");
+                        alert("充值成功！");
                         refreshBalance();
+                    } else if (status === 'cancelled') {
+                        // 安卓端有时支付成功也会报 cancelled，不弹窗报错，仅记录
+                        console.log("支付取消或完成");
                     } else {
-                        resultArea.innerHTML = `<p style="color:red;text-align:center">支付未完成: ${status}</p>`;
+                        resultArea.innerHTML = `<p style="color:red;text-align:center">状态: ${status}</p>`;
                     }
                 });
             }
-            else if (data.type === 'manual') {
-                resultArea.innerHTML = `
-                    <p style="font-size:12px; color:#555;">请向以下地址转账 <b>${data.amount}</b>：</p>
-                    <div style="background:#fff; padding:5px; border:1px dashed #ccc; margin:5px 0;">
-                        <div style="word-break:break-all; color:#d32f2f; font-weight:bold; font-size:13px;">${data.address}</div>
-                    </div>
-                    <p style="font-size:10px; color:#999;">订单号: ${data.order_no}</p>
-                    ${data.qrcode ? `<img src="${data.qrcode}" style="width:100px; display:block; margin:5px auto;">` : ''}
-                    <button onclick="mockPaySuccess('${data.order_no}')" style="width:100%; margin-top:5px; background:#2e7d32; color:#fff; border:none; padding:8px; border-radius:3px; cursor:pointer;">(测试用) 我已支付</button>
-                `;
-            }
-            if (data.type === 'url') {
-                resultArea.innerHTML = `<p>正在跳转支付页面...</p>`;
-                // 如果是 Telegram WebApp，建议用 openLink
+
+            // === B. URL 跳转支付 (NOWPayments / USDT) ===
+            else if (data.type === 'url') {
+                resultArea.innerHTML = `<p style="text-align:center">正在跳转支付页面...</p>`;
+
+                // 在 TG 内使用 openLink 打开外部浏览器，体验更好
                 if (window.Telegram?.WebApp) {
                     tg.openLink(data.url);
                 } else {
                     window.location.href = data.url;
                 }
+
+                // 提示用户
+                alert("请在浏览器中完成支付，支付完成后请返回此处。");
+                closeWallet();
+            }
+
+            // === C. 手动转账 (人工审核) ===
+            else if (data.type === 'manual') {
+                resultArea.innerHTML = `
+                    <p style="font-size:12px; color:#555;">请转账 <b>${data.amount}</b> 至：</p>
+                    <div style="background:#fff; padding:5px; border:1px dashed #ccc; margin:5px 0;">
+                        <div style="word-break:break-all; color:#d32f2f; font-weight:bold; font-size:13px;">${data.address}</div>
+                    </div>
+                    <p style="font-size:10px; color:#999;">订单号: ${data.order_no}</p>
+                    <button onclick="closeWallet()" style="width:100%; margin-top:5px;">我已转账</button>
+                `;
             }
 
         } catch (e) {
