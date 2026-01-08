@@ -24,7 +24,7 @@ class TelegramStars implements PaymentDriverInterface
 //        $baseUrl = "https://api.telegram.org";
          $baseUrl = "https://odd-moon-5f2c.loerwaldpuotinen600.workers.dev";
 
-        $url = "{$baseUrl}/bot{$botToken}/createInvoiceLink";
+        $url = "{$baseUrl}/bot{$botToken}/test/createInvoiceLink";
 
         // 3. 构造请求参数
         $payload = [
