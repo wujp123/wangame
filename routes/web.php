@@ -44,3 +44,15 @@ Route::get('/test-db-save', function () {
         return "❌ 写入失败！错误信息：<br>" . $e->getMessage();
     }
 });
+
+// 1. 首页 (访问域名根目录)
+Route::get('/', function () {
+    // 这里改成 'game'，对应 resources/views/game.blade.php
+    return view('game');
+});
+
+// 2. 支付回调页 (NOWPayments 跳转回来的地址)
+Route::get('/wallet', function () {
+    // 同样加载游戏主界面，因为你的弹窗逻辑写在游戏界面里
+    return view('game');
+});
