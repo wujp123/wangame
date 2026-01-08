@@ -662,9 +662,14 @@
                     <button onclick="mockPaySuccess('${data.order_no}')" style="width:100%; margin-top:5px; background:#2e7d32; color:#fff; border:none; padding:8px; border-radius:3px; cursor:pointer;">(测试用) 我已支付</button>
                 `;
             }
-            else if (data.type === 'url') {
-                resultArea.innerHTML = `<p>正在跳转...</p>`;
-                tg.openLink(data.url);
+            if (data.type === 'url') {
+                resultArea.innerHTML = `<p>正在跳转支付页面...</p>`;
+                // 如果是 Telegram WebApp，建议用 openLink
+                if (window.Telegram?.WebApp) {
+                    tg.openLink(data.url);
+                } else {
+                    window.location.href = data.url;
+                }
             }
 
         } catch (e) {

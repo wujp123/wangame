@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\GameController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BotController;
+use App\Http\Controllers\WebhookController;
 
 // Telegram 登录
 Route::post('/auth/telegram', [AuthController::class, 'telegramLogin']);
@@ -22,6 +23,8 @@ Route::post('withdraw', [PaymentController::class, 'withdraw']); // 提现
 Route::any('notify', [PaymentController::class, 'notify']);//回调
 Route::get('deposit/channels', [PaymentController::class, 'channels']);//通道
 Route::post('/telegram/webhook', [BotController::class, 'webhook']);
+
+Route::post('/webhook/nowpayments', [WebhookController::class, 'handleNowPayments'])->name('webhook.nowpayments');
 // 应用中间件 tg.auth
 Route::middleware(['tg.auth'])->group(function () {
 

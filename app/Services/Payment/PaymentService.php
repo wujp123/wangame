@@ -24,6 +24,10 @@ class PaymentService
             'class' => \App\Services\Payment\Drivers\UsdtApi::class,
             'label' => 'USDT API接口 (UsdtApi)'
         ],
+        'NowPayments' => [
+            'class' => \App\Services\Payment\Drivers\NowPayments::class,
+            'label' => '加密货币 (USDT/BTC/ETH)'
+        ],
         // 以后加支付宝，直接在这里加一行即可
         // 'Alipay' => ['class' => ..., 'label' => '支付宝'],
     ];
