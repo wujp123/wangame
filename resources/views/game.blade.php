@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Royal Fruit - Auto Scale</title>
+    <title>Royal Fruit - TG Native</title>
 
     <!-- 依赖库 -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -15,14 +15,23 @@
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto+Condensed:wght@700&display=swap');
 
         :root { --body-bg: #000; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
 
         html, body {
             margin: 0; padding: 0;
             background-color: var(--body-bg);
+            /* 关键：初始高度设为 100%，实际高度由 JS 覆盖 */
             height: 100%; width: 100%;
-            overflow: hidden; /* 禁止滚动 */
+            overflow: hidden; /* 严禁滚动 */
             font-family: 'Roboto Condensed', sans-serif;
+            position: fixed; /* 锁死页面位置 */
+            top: 0; left: 0;
         }
 
         #loading-mask {
@@ -32,26 +41,28 @@
             transition: opacity 0.5s;
         }
 
-        /* 主容器：铺满屏幕 */
+        /* 主容器 */
         #app-root {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            width: 100%; height: 100%;
-            max-width: 550px; /* 限制最大宽度，平板更舒适 */
-            margin: 0 auto;
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            /* height 将由 JS 动态计算 */
+            max-width: 550px;
+            left: 50%; transform: translateX(-50%); /* 居中 */
+
             background: linear-gradient(180deg, #b71c1c 0%, #880e4f 5%, #0277bd 15%, #01579b 100%);
-            display: flex; flex-direction: column; /* 垂直排列 */
+            display: flex; flex-direction: column;
             box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
 
-        /* === 1. 顶部区域 (固定高度) === */
+        /* 1. Header (Fixed) */
         .top-hood {
-            flex: 0 0 auto; /* 禁止压缩 */
-            height: 70px;
+            flex: 0 0 auto; height: 70px;
             background: radial-gradient(circle at 50% 100%, #ff5252, #b71c1c);
             border-bottom: 4px solid #ffd700;
             display: flex; justify-content: space-between; align-items: center;
             padding: 5px 15px;
-            padding-top: max(5px, env(safe-area-inset-top)); /* 避让刘海 */
+            padding-top: max(5px, env(safe-area-inset-top));
             z-index: 20; position: relative;
             box-shadow: 0 2px 10px rgba(0,0,0,0.4);
         }
@@ -65,34 +76,28 @@
         .lcd-digit { font-family: 'Orbitron', monospace; font-size: 18px; color: #ff1744; text-shadow: 0 0 8px #d50000; letter-spacing: 1px; }
         #balanceDisplay { color: #fff; text-shadow:none; }
 
-        /* === 2. 中间游戏区 (弹性伸缩) === */
+        /* 2. Middle (Elastic) */
         #game-wrapper {
-            flex: 1 1 auto;  /* 占据剩余空间 */
-            min-height: 0;   /* 关键！允许压缩到 0，防止撑破屏幕 */
-            min-width: 0;
-            width: 100%;
-            background: #fdf5e6; /* 米色背景 */
-            border-left: 3px solid #0d47a1;
-            border-right: 3px solid #0d47a1;
+            flex: 1 1 auto; min-height: 0; min-width: 0; width: 100%;
+            background: #fdf5e6;
+            border-left: 3px solid #0d47a1; border-right: 3px solid #0d47a1;
             position: relative;
-            /* 居中 Canvas */
             display: flex; justify-content: center; align-items: center;
             overflow: hidden;
         }
-        /* Canvas 样式由 JS 动态控制 */
 
-        /* === 3. 底部操作台 (固定高度，内容自适应) === */
+        /* 3. Footer (Fixed) */
         .control-deck {
-            flex: 0 0 auto; /* 禁止压缩 */
+            flex: 0 0 auto;
             background: linear-gradient(180deg, #42a5f5 0%, #1565c0 40%, #0d47a1 100%);
             border-top: 4px solid #ffd700;
             padding: 8px;
-            padding-bottom: max(10px, env(safe-area-inset-bottom)); /* 避让底部横条 */
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
             display: flex; flex-direction: column; gap: 6px;
             position: relative; z-index: 10;
         }
 
-        /* 按钮和 UI 样式 (保持高拟真) */
+        /* UI Styles */
         .func-row { display: flex; gap: 6px; justify-content: space-between; align-items: center; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 10px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.3); }
         .btn-3d { border: none; position: relative; cursor: pointer; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
         .btn-3d:active { transform: translateY(3px); box-shadow: 0 0 0 transparent !important; border-bottom-width: 0 !important;}
@@ -122,10 +127,8 @@
         .pb-purp { background: linear-gradient(180deg, #e040fb 0%, #7b1fa2 100%); }
         .pb-red { background: linear-gradient(180deg, #ff5252 0%, #b71c1c 100%); }
 
-        /* Mock Toast */
         #msg-toast { position:absolute; bottom: 20%; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px; display:none; z-index:100; pointer-events:none; }
 
-        /* Wallet */
         .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; justify-content:center; align-items:center; }
         .modal-body { background: #fff; width: 300px; padding: 20px; border-radius: 10px; font-family: sans-serif; }
         .modal-tabs { display:flex; gap:10px; margin-bottom:15px; }
@@ -141,7 +144,6 @@
 <div id="msg-toast"></div>
 
 <div id="app-root">
-    <!-- Header -->
     <div class="top-hood">
         <div class="bulb-deco"><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div></div>
         <div class="lcd-group">
@@ -154,12 +156,10 @@
         </div>
     </div>
 
-    <!-- Middle Game Area (Flexible) -->
     <div id="game-wrapper">
-        <!-- Canvas will be injected here -->
+        <!-- Canvas -->
     </div>
 
-    <!-- Footer -->
     <div class="control-deck">
         <div class="func-row">
             <button class="btn-3d b-round-green" onclick="openWallet()">$<br>ADD</button>
@@ -180,9 +180,7 @@
 <!-- Wallet Modal -->
 <div id="walletModal" class="modal-overlay">
     <div class="modal-body">
-        <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
-            <h3>钱包</h3><button onclick="closeWallet()">X</button>
-        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px;"><h3>钱包</h3><button onclick="closeWallet()">X</button></div>
         <div class="modal-tabs">
             <button id="tabDep" class="tab-btn active" onclick="switchTab('deposit')">充值</button>
             <button id="tabWdr" class="tab-btn" onclick="switchTab('withdraw')">提现</button>
@@ -207,7 +205,32 @@
 </div>
 
 <script>
-    // === 0. 智能配置 (Hybrid) ===
+    // === 0. TG 环境适配核心 ===
+    const tg = window.Telegram?.WebApp;
+    if(tg) {
+        tg.ready();
+        tg.expand(); // 请求全屏
+        try { tg.setHeaderColor('#b71c1c'); } catch(e){}
+    }
+
+    // ★★★ 核心：动态视口调整 ★★★
+    function adjustViewport() {
+        const root = document.getElementById('app-root');
+        // 优先使用 Telegram 提供的稳定视口高度，没有则用 window.innerHeight
+        const height = (tg && tg.viewportStableHeight) ? tg.viewportStableHeight : window.innerHeight;
+        root.style.height = height + 'px';
+
+        // 触发 Pixi 重绘
+        if(app) resizePixi();
+    }
+
+    // 监听 TG 视口变化
+    if(tg) {
+        tg.onEvent('viewportChanged', adjustViewport);
+    }
+    window.addEventListener('resize', adjustViewport);
+
+    // === 1. 数据配置 ===
     const VISUAL_MAP = {
         1: { icon: '💎', color: 'pb-green', tag: 'bg-blue' },
         2: { icon: '7️⃣', color: 'pb-purp', tag: 'bg-red' },
@@ -232,8 +255,7 @@
         balance: 5000
     };
 
-    let FRUIT_CONFIG = [], BOARD_LAYOUT = [], currentBets = {}, isSpinning = false, autoPlay = false;
-    let squares = [], app;
+    let FRUIT_CONFIG = [], BOARD_LAYOUT = [], currentBets = {}, isSpinning = false, autoPlay = false, activeChannel = null, squares = [], app;
     let useMock = false;
 
     const sfx = {
@@ -243,13 +265,10 @@
         lucky: new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3'] })
     };
 
-    // === 1. 启动 ===
     async function initGame() {
-        const tg = window.Telegram?.WebApp;
-        if(tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#b71c1c'); }
+        adjustViewport(); // 立即执行一次适配
 
         try {
-            // 尝试连接后端 (1秒超时)
             const res = await axios.get('/api/game/config', { timeout: 1000 });
             const data = res.data.data;
             FRUIT_CONFIG = data.fruits;
@@ -268,16 +287,11 @@
         initUI();
         refreshBalance();
 
-        // 隐藏遮罩
         const mask = document.getElementById('loading-mask');
         mask.style.opacity = '0';
         setTimeout(()=>mask.style.display='none', 500);
-
-        // 触发一次 Resize 确保对齐
-        window.dispatchEvent(new Event('resize'));
     }
 
-    // === 2. 界面构建 ===
     function initUI() {
         const div = document.getElementById('betButtonsContainer');
         div.innerHTML = '';
@@ -296,35 +310,29 @@
         });
     }
 
+    // === Pixi 适配逻辑 ===
     function initPixi() {
         const wrapper = document.getElementById('game-wrapper');
-        // 使用 520x520 作为基准逻辑尺寸
         const LOGIC_SIZE = 520;
         app = new PIXI.Application({ width:LOGIC_SIZE, height:LOGIC_SIZE, backgroundAlpha:0, resolution:2 });
         wrapper.appendChild(app.view);
 
-        // ★★★ 核心适配逻辑 ★★★
-        const resize = () => {
-            // 获取容器当前的可用宽高
+        // 绑定全局 resize 函数
+        window.resizePixi = () => {
             const w = wrapper.clientWidth;
             const h = wrapper.clientHeight;
-            // 计算最大正方形尺寸
+            // 确保是正方形，取最小边，100%填满不留白
             const size = Math.min(w, h);
-
-            // 应用尺寸
             app.view.style.width = size + 'px';
             app.view.style.height = size + 'px';
         };
-        window.addEventListener('resize', resize);
-        // 延时执行以确保容器已渲染
-        setTimeout(resize, 50);
+        resizePixi();
 
-        // 绘制内容
+        // 绘制
         const bg = new PIXI.Graphics();
         bg.beginFill(0xfdf5e6); bg.drawRect(0,0,LOGIC_SIZE,LOGIC_SIZE);
         app.stage.addChild(bg);
 
-        // 中间
         const center = new PIXI.Container();
         const cBg = new PIXI.Graphics();
         cBg.beginFill(0xb71c1c); cBg.drawRoundedRect(0,0, 330, 330, 20);
@@ -354,7 +362,6 @@
         center.position.set(95, 95);
         app.stage.addChild(center);
 
-        // 格子 (填满)
         const step = 73; const start = 5; const boxSize = 71;
         const POS = [];
         for(let i=0; i<7; i++) POS.push({x:start+i*step, y:start});
@@ -398,10 +405,9 @@
         if(squares.length) squares[0].highlight.visible = true;
     }
 
-    // === 3. 交互 ===
+    // Logic
     function addBet(id) {
         if(isSpinning) return;
-        if(useMock && MOCK_DATA.balance < 10) return showToast("余额不足");
         sndClick.play();
         currentBets[id] += 10;
         document.getElementById(`bet-val-${id}`).innerText = currentBets[id];
@@ -491,7 +497,7 @@
         });
     }
 
-    // Wallet (Mock)
+    // Wallet
     async function openWallet() {
         if(useMock) { showToast("演示模式无需充值"); return; }
         await loadChannels();
@@ -544,8 +550,11 @@
         t.innerText = msg; t.style.display='block';
         setTimeout(()=>t.style.display='none', 2000);
     }
-    function tgTrigger(s) { if(window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred(s); }
-    function tgNotify(t) { if(window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred(t); }
+    function tgTrigger(s) { if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred(s); }
+    function tgNotify(t) { if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred(t); }
+
+    // 防止 iOS 下拉回弹
+    document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
 
     // Start
     initGame();
