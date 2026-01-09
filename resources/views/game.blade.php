@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Royal Fruit - Responsive Deck</title>
+    <title>Royal Fruit - Horizontal Fit</title>
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://pixijs.download/v7.x/pixi.min.js"></script>
@@ -17,17 +17,14 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 
         body, html {
-            margin: 0; padding: 0;
-            background-color: var(--body-bg);
-            height: 100%; width: 100%;
-            overflow: hidden;
-            position: fixed;
-            font-family: 'Roboto Condensed', sans-serif;
+            margin: 0; padding: 0; background-color: var(--body-bg);
+            height: 100%; width: 100%; overflow: hidden;
+            position: fixed; font-family: 'Roboto Condensed', sans-serif;
         }
 
         #loading-mask {
             position: fixed; inset: 0; background: #000; z-index: 9999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            display: flex; justify-content: center; align-items: center;
             color: #ffd700; font-family: 'Orbitron'; font-size: 20px; transition: opacity 0.5s;
         }
 
@@ -38,17 +35,14 @@
             box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
 
-        /* 1. 顶部 (高度压缩适配) */
+        /* 1. Header */
         .top-hood {
-            flex: 0 0 auto;
-            height: 60px; /* 稍微调低默认高度 */
+            flex: 0 0 auto; height: 60px; /* 稍微压扁一点顶部 */
             background: radial-gradient(circle at 50% 100%, #ff5252, #b71c1c);
             border-bottom: 4px solid #ffd700;
             display: flex; justify-content: space-between; align-items: center;
-            padding: 2px 10px;
-            padding-top: max(5px, env(safe-area-inset-top));
-            z-index: 20; position: relative;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            padding: 2px 10px; padding-top: max(5px, env(safe-area-inset-top));
+            z-index: 20; position: relative; box-shadow: 0 2px 10px rgba(0,0,0,0.4);
         }
         .bulb-deco { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 60%; display: flex; justify-content: space-between; pointer-events: none; }
         .bulb { width: 6px; height: 6px; background: #fff; border-radius: 50%; box-shadow: 0 0 8px #fff; }
@@ -60,7 +54,7 @@
         .lcd-digit { font-family: 'Orbitron', monospace; font-size: 16px; color: #ff1744; text-shadow: 0 0 8px #d50000; letter-spacing: 1px; }
         #balanceDisplay { color: #fff; text-shadow:none; }
 
-        /* 2. 中间 (弹性) */
+        /* 2. Game Area */
         #game-wrapper {
             flex: 1 1 auto; min-height: 0; width: 100%;
             background: #fdf5e6;
@@ -69,122 +63,108 @@
             overflow: hidden;
         }
 
-        /* 3. 底部操作台 (核心重构：Grid + Flex) */
+        /* 3. Control Deck (重点修改) */
         .control-deck {
             flex: 0 0 auto;
             background: linear-gradient(180deg, #42a5f5 0%, #1565c0 40%, #0d47a1 100%);
             border-top: 4px solid #ffd700;
-            padding: 6px;
+            padding: 5px;
             padding-bottom: calc(8px + env(safe-area-inset-bottom));
-            display: flex; flex-direction: column; gap: 6px;
+            display: flex; flex-direction: column; gap: 5px;
             position: relative; z-index: 10;
+            width: 100%; /* 确保不超过屏幕 */
+            box-sizing: border-box;
         }
 
-        /* 第一排：功能键 (Flex 均分) */
+        /* === 功能行 (Flex 强力自适应) === */
         .func-row {
-            display: flex; gap: 4px;
-            justify-content: space-between; align-items: stretch; /* 强制等高 */
-            padding: 4px; background: rgba(0,0,0,0.2); border-radius: 10px;
-            height: 50px; /* 固定高度确保整齐 */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 4px; /* 间隙极小，防溢出 */
+            width: 100%; /* 占满全宽 */
+            height: 12vw; /* 高度随宽度变化 */
+            max-height: 50px; /* 最大限制 */
+            min-height: 40px; /* 最小限制 */
+            padding: 3px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            box-sizing: border-box;
         }
 
         .btn-3d {
             border: none; position: relative; cursor: pointer; color: #fff; font-weight: bold;
             display: flex; align-items: center; justify-content: center;
             transition: transform 0.1s;
-            /* 关键：取消固定宽度，让 Flex 决定 */
-            flex: 1; min-width: 0;
+            /* 关键：取消固定宽度，允许伸缩 */
+            height: 100%; /* 填满行高 */
+            flex: 1;      /* 均分剩余空间 */
+            min-width: 0; /* 允许压缩内容 */
+            padding: 0;   /* 清除内边距防撑大 */
         }
-        .btn-3d:active { transform: translateY(3px); box-shadow: 0 0 0 transparent !important; border-bottom-width: 0 !important;}
+        .btn-3d:active { transform: translateY(2px); box-shadow: none !important; border-bottom: none !important; margin-top: 2px; }
 
-        /* 圆形按钮 (ADD) */
+        /* 圆形按钮 (不伸缩，保持正圆) */
         .b-round-green {
-            /* 保持正圆 */
-            aspect-ratio: 1/1; flex: 0 0 auto; height: 100%;
-            border-radius: 50%; background: linear-gradient(180deg, #76ff03 0%, #33691e 100%);
-            box-shadow: 0 4px 0 #1b5e20; border: 2px solid #b2ff59;
-            font-size: 10px; flex-direction: column; line-height: 1.1;
-        }
-
-        /* 方形组 */
-        .grp-blue { flex: 1.5; display: flex; gap: 2px; }
-        .grp-purp { flex: 2; display: flex; gap: 2px; }
-
-        .b-sq {
-            width: 100%; height: 100%; border-radius: 8px;
-            font-size: 12px;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.4); border-top: 1px solid rgba(255,255,255,0.4);
-        }
-
-        /* GO 按钮 */
-        .b-go {
-            flex: 1.2; border-radius: 10px; height: 100%;
-            background: linear-gradient(180deg, #ffeb3b 0%, #ff6f00 100%);
-            box-shadow: 0 5px 0 #e65100; border: 2px solid #fff;
-            color: #b71c1c; font-family: 'Orbitron'; font-size: 18px;
-        }
-
-        /* 下注面板 (核心重构：Grid 自适应) */
-        .bet-panel {
-            display: grid;
-            /* 强制分为 8 列 */
-            grid-template-columns: repeat(8, 1fr);
-            gap: 2px; /* 极小间距 */
-            background: #0d47a1; padding: 4px; border-radius: 8px;
-        }
-
-        /* 每一列 */
-        .bet-col {
-            display: flex; flex-direction: column; align-items: center; gap: 1px;
-            width: 100%; overflow: hidden; /* 防止撑开 */
-        }
-
-        /* 元素 100% 宽度，自适应内容 */
-        .odds-glass {
-            width: 100%; height: 20px;
-            /* 动态字体 */
-            font-size: clamp(8px, 2.5vw, 12px);
-            font-weight: 900; color: #fff;
-            display: flex; align-items: center; justify-content: center;
+            flex: 0 0 auto; /* 禁止缩放 */
+            aspect-ratio: 1/1; /* 锁定正圆 */
+            height: 100%; /* 跟随行高 */
+            width: auto;  /* 宽度自动计算 */
+            border-radius: 50%;
+            background: linear-gradient(180deg, #76ff03 0%, #33691e 100%);
+            box-shadow: 0 3px 0 #1b5e20, 0 4px 4px rgba(0,0,0,0.3);
+            border: 2px solid #b2ff59;
+            font-size: clamp(8px, 2.5vw, 10px);
+            flex-direction: column; line-height: 1.1;
             text-shadow: 0 1px 1px #000;
-            border: 1px solid rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.6);
         }
 
-        .led-window {
-            width: 100%; height: 18px;
-            background: #000; border: 1px solid #555;
-            color: #ff1744; font-family: 'Orbitron';
-            font-size: clamp(9px, 3vw, 14px);
-            display: flex; align-items: center; justify-content: center;
+        /* 方形按钮 */
+        .b-sq {
+            border-radius: 8px;
+            font-size: clamp(10px, 3.5vw, 14px); /* 动态字体 */
+            box-shadow: 0 3px 0 rgba(0,0,0,0.4), 0 4px 4px rgba(0,0,0,0.2);
+            border-top: 1px solid rgba(255,255,255,0.4);
         }
-
-        .push-btn {
-            width: 100%;
-            /* 保持正圆 */
-            aspect-ratio: 1 / 1;
-            border-radius: 50%; border: none; position: relative; cursor: pointer;
-            box-shadow: 0 3px 0 rgba(0,0,0,0.3);
-            display: flex; align-items: center; justify-content: center;
-            border-top: 1px solid rgba(255,255,255,0.5);
-        }
-        .push-btn span {
-            font-size: clamp(14px, 4vw, 22px); /* 图标随宽度缩放 */
-            text-shadow: 1px 1px 2px #000;
-        }
-        .push-btn:active { transform: translateY(2px); box-shadow: none; }
-
-        /* 颜色类 */
-        .b-blue { background: linear-gradient(180deg, #29b6f6 0%, #01579b 100%); font-size: 16px; }
+        .b-blue { background: linear-gradient(180deg, #29b6f6 0%, #01579b 100%); font-size: clamp(14px, 5vw, 20px); }
         .b-purp { background: linear-gradient(180deg, #ab47bc 0%, #4a148c 100%); }
+
+        /* GO 按钮 (权重更大) */
+        .b-go {
+            flex: 1.5; /* 占据更多空间 */
+            border-radius: 10px;
+            background: linear-gradient(180deg, #ffeb3b 0%, #ff6f00 100%);
+            box-shadow: 0 4px 0 #e65100, 0 5px 5px rgba(0,0,0,0.3);
+            border: 2px solid #fff;
+            color: #b71c1c; font-family: 'Orbitron';
+            font-size: clamp(16px, 5vw, 24px); /* 动态字体 */
+        }
+
+        /* 下注面板 */
+        .bet-panel {
+            display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+            background: #0d47a1; padding: 3px; border-radius: 8px;
+            width: 100%; box-sizing: border-box;
+        }
+        .bet-col { display: flex; flex-direction: column; align-items: center; gap: 1px; width: 100%; overflow: hidden; }
+
+        .odds-glass { width: 100%; height: 20px; font-size: clamp(8px, 2.5vw, 12px); font-weight: 900; color: #fff; display: flex; align-items: center; justify-content: center; text-shadow: 0 1px 1px #000; border: 1px solid rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.6); }
         .bg-blue { background: linear-gradient(180deg, #42a5f5 0%, #1565c0 100%); }
         .bg-red { background: linear-gradient(180deg, #ef5350 0%, #b71c1c 100%); }
         .bg-grey { background: linear-gradient(180deg, #90a4ae 0%, #455a64 100%); }
+
+        .led-window { width: 100%; height: 18px; background: #000; border: 1px solid #555; color: #ff1744; font-family: 'Orbitron'; font-size: clamp(9px, 3vw, 14px); display: flex; align-items: center; justify-content: center; }
+
+        .push-btn { width: 100%; aspect-ratio: 1/1; border-radius: 50%; border: none; position: relative; cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; border-top: 1px solid rgba(255,255,255,0.5); }
+        .push-btn span { font-size: clamp(14px, 4vw, 22px); text-shadow: 1px 1px 2px #000; }
+        .push-btn:active { transform: translateY(2px); box-shadow: none; }
+
         .pb-green { background: linear-gradient(180deg, #76ff03 0%, #33691e 100%); }
         .pb-purp { background: linear-gradient(180deg, #e040fb 0%, #7b1fa2 100%); }
         .pb-red { background: linear-gradient(180deg, #ff5252 0%, #b71c1c 100%); }
 
-        /* 辅助元素 */
-        #msg-toast { position:absolute; bottom: 20%; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px; display:none; z-index:100; pointer-events:none; }
+        /* Modal */
+        #msg-toast { position:absolute; bottom: 20%; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px; display:none; z-index:100; pointer-events:none; white-space: nowrap; }
         .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; justify-content:center; align-items:center; }
         .modal-body { background: #fff; width: 300px; padding: 20px; border-radius: 10px; font-family: sans-serif; }
     </style>
@@ -209,41 +189,36 @@
     </div>
 
     <!-- 游戏区 -->
-    <div id="game-wrapper"></div>
+    <div id="game-wrapper">
+        <!-- Canvas -->
+    </div>
 
-    <!-- 底部 (Grid布局) -->
+    <!-- 底部 (Flex 强力自适应) -->
     <div class="control-deck">
-        <!-- 功能按键行 -->
         <div class="func-row">
             <button class="btn-3d b-round-green" onclick="openWallet()">$<br>ADD</button>
-            <div class="grp-blue">
-                <button class="btn-3d b-sq b-blue">⬅</button>
-                <button class="btn-3d b-sq b-blue">➡</button>
-            </div>
-            <div class="grp-purp">
-                <button class="btn-3d b-sq b-purp btn-auto" onclick="toggleAuto()">AUTO</button>
-                <button class="btn-3d b-sq b-purp">8-13</button>
-            </div>
+            <button class="btn-3d b-sq b-blue">⬅</button>
+            <button class="btn-3d b-sq b-blue">➡</button>
+            <button class="btn-3d b-sq b-purp btn-auto" onclick="toggleAuto()">AUTO</button>
+            <button class="btn-3d b-sq b-purp">8-13</button>
             <button class="btn-3d b-go" id="startBtn" onclick="spin()">GO</button>
         </div>
-        <!-- 下注按钮行 -->
         <div class="bet-panel" id="betButtonsContainer"></div>
     </div>
 </div>
 
-<!-- Wallet Modal -->
+<!-- Wallet -->
 <div id="walletModal" class="modal-overlay">
     <div class="modal-body">
         <h3>钱包</h3>
-        <p>充值通道加载中...</p>
+        <p>正在连接支付网关...</p>
         <button onclick="document.getElementById('walletModal').style.display='none'" style="margin-top:10px;padding:8px;width:100%">关闭</button>
     </div>
 </div>
 
 <script>
-    // === 环境适配 ===
     const tg = window.Telegram?.WebApp;
-    if(tg) { tg.ready(); tg.expand(); try { tg.setHeaderColor('#b71c1c'); } catch(e){} }
+    if(tg) { tg.ready(); tg.expand(); try{tg.setHeaderColor('#b71c1c');}catch(e){} }
 
     function adjustViewport() {
         const h = (tg && tg.viewportStableHeight) ? tg.viewportStableHeight : window.innerHeight;
@@ -253,7 +228,11 @@
     if(tg) tg.onEvent('viewportChanged', adjustViewport);
     window.addEventListener('resize', adjustViewport);
 
-    // === 配置 ===
+    axios.interceptors.response.use(r=>r, e=>{
+        if(e.response && e.response.status===401) location.reload();
+        return Promise.reject(e);
+    });
+
     const VISUAL_MAP = {
         1: { icon: '💎', color: 'pb-green', tag: 'bg-blue' },
         2: { icon: '7️⃣', color: 'pb-purp', tag: 'bg-red' },
@@ -326,7 +305,8 @@
             const w = wrap.clientWidth;
             const h = wrap.clientHeight;
             const s = Math.min(w, h);
-            app.view.style.width = s+'px'; app.view.style.height = s+'px';
+            app.view.style.width = s+'px';
+            app.view.style.height = s+'px';
         };
         resizePixi();
 
