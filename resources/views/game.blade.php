@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Royal Fruit - Auto Mode</title>
+    <title>Royal Fruit - Auto Scale</title>
 
+    <!-- 依赖库 -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://pixijs.download/v7.x/pixi.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
@@ -16,11 +17,11 @@
         :root { --body-bg: #000; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 
-        body, html {
+        html, body {
             margin: 0; padding: 0;
             background-color: var(--body-bg);
             height: 100%; width: 100%;
-            overflow: hidden;
+            overflow: hidden; /* 禁止滚动 */
             font-family: 'Roboto Condensed', sans-serif;
         }
 
@@ -31,21 +32,26 @@
             transition: opacity 0.5s;
         }
 
+        /* 主容器：铺满屏幕 */
         #app-root {
-            width: 100%; max-width: 500px; height: 100%; margin: 0 auto;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            max-width: 550px; /* 限制最大宽度，平板更舒适 */
+            margin: 0 auto;
             background: linear-gradient(180deg, #b71c1c 0%, #880e4f 5%, #0277bd 15%, #01579b 100%);
-            display: flex; flex-direction: column; position: relative;
+            display: flex; flex-direction: column; /* 垂直排列 */
             box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
 
-        /* 1. 顶部灯箱 (固定) */
+        /* === 1. 顶部区域 (固定高度) === */
         .top-hood {
-            flex: 0 0 70px; height: 70px;
+            flex: 0 0 auto; /* 禁止压缩 */
+            height: 70px;
             background: radial-gradient(circle at 50% 100%, #ff5252, #b71c1c);
             border-bottom: 4px solid #ffd700;
             display: flex; justify-content: space-between; align-items: center;
             padding: 5px 15px;
-            padding-top: max(5px, env(safe-area-inset-top));
+            padding-top: max(5px, env(safe-area-inset-top)); /* 避让刘海 */
             z-index: 20; position: relative;
             box-shadow: 0 2px 10px rgba(0,0,0,0.4);
         }
@@ -59,26 +65,34 @@
         .lcd-digit { font-family: 'Orbitron', monospace; font-size: 18px; color: #ff1744; text-shadow: 0 0 8px #d50000; letter-spacing: 1px; }
         #balanceDisplay { color: #fff; text-shadow:none; }
 
-        /* 2. 游戏盘面 (弹性自适应) */
+        /* === 2. 中间游戏区 (弹性伸缩) === */
         #game-wrapper {
-            flex: 1 1 auto; min-height: 0; width: 100%;
-            background: #fdf5e6;
-            border-left: 2px solid #0d47a1; border-right: 2px solid #0d47a1;
+            flex: 1 1 auto;  /* 占据剩余空间 */
+            min-height: 0;   /* 关键！允许压缩到 0，防止撑破屏幕 */
+            min-width: 0;
+            width: 100%;
+            background: #fdf5e6; /* 米色背景 */
+            border-left: 3px solid #0d47a1;
+            border-right: 3px solid #0d47a1;
+            position: relative;
+            /* 居中 Canvas */
             display: flex; justify-content: center; align-items: center;
-            overflow: hidden; padding: 0;
+            overflow: hidden;
         }
+        /* Canvas 样式由 JS 动态控制 */
 
-        /* 3. 底部操作台 (固定) */
+        /* === 3. 底部操作台 (固定高度，内容自适应) === */
         .control-deck {
-            flex: 0 0 auto;
+            flex: 0 0 auto; /* 禁止压缩 */
             background: linear-gradient(180deg, #42a5f5 0%, #1565c0 40%, #0d47a1 100%);
             border-top: 4px solid #ffd700;
             padding: 8px;
-            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            padding-bottom: max(10px, env(safe-area-inset-bottom)); /* 避让底部横条 */
             display: flex; flex-direction: column; gap: 6px;
             position: relative; z-index: 10;
         }
 
+        /* 按钮和 UI 样式 (保持高拟真) */
         .func-row { display: flex; gap: 6px; justify-content: space-between; align-items: center; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 10px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.3); }
         .btn-3d { border: none; position: relative; cursor: pointer; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
         .btn-3d:active { transform: translateY(3px); box-shadow: 0 0 0 transparent !important; border-bottom-width: 0 !important;}
@@ -89,6 +103,7 @@
         .b-purp { background: linear-gradient(180deg, #ab47bc 0%, #4a148c 100%); font-size: 11px; }
         .b-go { width: 70px; height: 42px; border-radius: 10px; background: linear-gradient(180deg, #ffeb3b 0%, #ff6f00 100%); box-shadow: 0 5px 0 #e65100, 0 5px 5px rgba(0,0,0,0.3); border: 2px solid #fff; color: #b71c1c; font-family: 'Orbitron'; font-size: 20px; }
         .b-go:active { transform: translateY(4px); box-shadow: 0 1px 0 #e65100; }
+        .b-go:disabled { filter: grayscale(1); cursor: not-allowed; }
 
         .bet-panel { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; background: #0d47a1; padding: 4px; border-radius: 8px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.6), 0 2px 0 rgba(255,255,255,0.2); }
         .bet-col { display: flex; flex-direction: column; align-items: center; gap: 1px; }
@@ -108,16 +123,25 @@
         .pb-red { background: linear-gradient(180deg, #ff5252 0%, #b71c1c 100%); }
 
         /* Mock Toast */
-        #msg-toast { position:absolute; bottom: 100px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px; display:none; z-index:100; pointer-events:none; }
+        #msg-toast { position:absolute; bottom: 20%; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px; display:none; z-index:100; pointer-events:none; }
+
+        /* Wallet */
+        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; justify-content:center; align-items:center; }
+        .modal-body { background: #fff; width: 300px; padding: 20px; border-radius: 10px; font-family: sans-serif; }
+        .modal-tabs { display:flex; gap:10px; margin-bottom:15px; }
+        .tab-btn { flex:1; padding:8px; border:1px solid #ccc; background:#eee; cursor:pointer; }
+        .tab-btn.active { background:#0277bd; color:white; border-color:#0277bd; }
+        .channel-btn { padding:10px; margin-bottom:5px; border:1px solid #ddd; cursor:pointer; display:flex; justify-content:space-between; }
+        .channel-btn.active { border-color:#0277bd; background:#e1f5fe; }
     </style>
 </head>
 <body>
 
-<div id="loading-mask">CONNECTING...</div>
+<div id="loading-mask">INITIALIZING...</div>
 <div id="msg-toast"></div>
 
 <div id="app-root">
-    <!-- 顶部 -->
+    <!-- Header -->
     <div class="top-hood">
         <div class="bulb-deco"><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div></div>
         <div class="lcd-group">
@@ -130,13 +154,15 @@
         </div>
     </div>
 
-    <!-- 中间 (Canvas) -->
-    <div id="game-wrapper"></div>
+    <!-- Middle Game Area (Flexible) -->
+    <div id="game-wrapper">
+        <!-- Canvas will be injected here -->
+    </div>
 
-    <!-- 底部 -->
+    <!-- Footer -->
     <div class="control-deck">
         <div class="func-row">
-            <button class="btn-3d b-round-green" onclick="showToast('充值功能暂不可用')">$<br>ADD</button>
+            <button class="btn-3d b-round-green" onclick="openWallet()">$<br>ADD</button>
             <div style="display:flex; gap:6px; flex:1.5">
                 <button class="btn-3d b-sq b-blue">⬅</button>
                 <button class="btn-3d b-sq b-blue">➡</button>
@@ -151,8 +177,37 @@
     </div>
 </div>
 
+<!-- Wallet Modal -->
+<div id="walletModal" class="modal-overlay">
+    <div class="modal-body">
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+            <h3>钱包</h3><button onclick="closeWallet()">X</button>
+        </div>
+        <div class="modal-tabs">
+            <button id="tabDep" class="tab-btn active" onclick="switchTab('deposit')">充值</button>
+            <button id="tabWdr" class="tab-btn" onclick="switchTab('withdraw')">提现</button>
+        </div>
+        <div id="panelDeposit">
+            <div id="channelList">Loading...</div>
+            <div id="depositInputArea" style="display:none; margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+                <p style="font-size:12px">汇率: <span id="currentRate"></span></p>
+                <input type="number" id="depAmount" placeholder="金额" style="width:100%;padding:8px;margin-bottom:5px;">
+                <p style="font-size:12px;color:green">预计: <span id="calcPoints">0</span> 积分</p>
+                <button class="btn-3d b-sq b-blue btn-confirm" style="width:100%" onclick="doDeposit()">支付</button>
+            </div>
+            <div id="depResult" style="margin-top:10px; font-size:12px;"></div>
+        </div>
+        <div id="panelWithdraw" style="display:none">
+            <p>余额: <span id="walletBalance">0</span></p>
+            <input id="wdrAddr" placeholder="TRC20 地址" style="width:100%;padding:8px;margin-bottom:5px;">
+            <input type="number" id="wdrAmt" placeholder="金额" style="width:100%;padding:8px;margin-bottom:5px;">
+            <button class="btn-3d b-sq b-purp" style="width:100%" onclick="alert('提现申请已提交')">提现</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    // === 0. 智能配置 (Hybrid Config) ===
+    // === 0. 智能配置 (Hybrid) ===
     const VISUAL_MAP = {
         1: { icon: '💎', color: 'pb-green', tag: 'bg-blue' },
         2: { icon: '7️⃣', color: 'pb-purp', tag: 'bg-red' },
@@ -165,7 +220,6 @@
         9: { icon: '❓', color: '', tag: '' }
     };
 
-    // 本地备用数据 (当API失败时使用)
     const MOCK_DATA = {
         fruits: [
             {id:1, name:'BAR', multiplier:100}, {id:2, name:'77', multiplier:40},
@@ -180,7 +234,7 @@
 
     let FRUIT_CONFIG = [], BOARD_LAYOUT = [], currentBets = {}, isSpinning = false, autoPlay = false;
     let squares = [], app;
-    let useMock = false; // 标记当前是否使用离线模式
+    let useMock = false;
 
     const sfx = {
         click: new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'] }),
@@ -189,41 +243,37 @@
         lucky: new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3'] })
     };
 
-    // === 1. 核心启动逻辑 (智能降级) ===
+    // === 1. 启动 ===
     async function initGame() {
         const tg = window.Telegram?.WebApp;
-        if(tg) { tg.ready(); tg.expand(); }
+        if(tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#b71c1c'); }
 
         try {
-            // 尝试连接后端 (设置2秒超时，防止久等)
-            const res = await axios.get('/api/game/config', { timeout: 2000 });
-            // API 成功
+            // 尝试连接后端 (1秒超时)
+            const res = await axios.get('/api/game/config', { timeout: 1000 });
             const data = res.data.data;
             FRUIT_CONFIG = data.fruits;
             BOARD_LAYOUT = data.layout;
             useMock = false;
-            console.log("Online Mode");
         } catch (e) {
-            // API 失败 -> 切换单机模式
-            console.warn("API Error, switching to Offline Mode");
+            console.warn("Offline Mode");
             FRUIT_CONFIG = MOCK_DATA.fruits;
             BOARD_LAYOUT = MOCK_DATA.layout;
             useMock = true;
         }
 
-        // 初始化数据
         FRUIT_CONFIG.forEach(f => { if(f.id !== 9) currentBets[f.id] = 0; });
 
         initPixi();
         initUI();
-        refreshBalance(); // 初次显示余额
+        refreshBalance();
 
-        // 移除遮罩
+        // 隐藏遮罩
         const mask = document.getElementById('loading-mask');
         mask.style.opacity = '0';
         setTimeout(()=>mask.style.display='none', 500);
 
-        // 触发自适应
+        // 触发一次 Resize 确保对齐
         window.dispatchEvent(new Event('resize'));
     }
 
@@ -248,26 +298,33 @@
 
     function initPixi() {
         const wrapper = document.getElementById('game-wrapper');
-        const W = 520, H = 520;
-        app = new PIXI.Application({ width:W, height:H, backgroundAlpha:0, resolution:2 });
+        // 使用 520x520 作为基准逻辑尺寸
+        const LOGIC_SIZE = 520;
+        app = new PIXI.Application({ width:LOGIC_SIZE, height:LOGIC_SIZE, backgroundAlpha:0, resolution:2 });
         wrapper.appendChild(app.view);
 
-        // ★ 自适应逻辑 ★
+        // ★★★ 核心适配逻辑 ★★★
         const resize = () => {
+            // 获取容器当前的可用宽高
             const w = wrapper.clientWidth;
             const h = wrapper.clientHeight;
+            // 计算最大正方形尺寸
             const size = Math.min(w, h);
+
+            // 应用尺寸
             app.view.style.width = size + 'px';
             app.view.style.height = size + 'px';
         };
         window.addEventListener('resize', resize);
-        resize();
+        // 延时执行以确保容器已渲染
+        setTimeout(resize, 50);
 
-        // 绘图
+        // 绘制内容
         const bg = new PIXI.Graphics();
-        bg.beginFill(0xfdf5e6); bg.drawRect(0,0,W,H);
+        bg.beginFill(0xfdf5e6); bg.drawRect(0,0,LOGIC_SIZE,LOGIC_SIZE);
         app.stage.addChild(bg);
 
+        // 中间
         const center = new PIXI.Container();
         const cBg = new PIXI.Graphics();
         cBg.beginFill(0xb71c1c); cBg.drawRoundedRect(0,0, 330, 330, 20);
@@ -297,7 +354,7 @@
         center.position.set(95, 95);
         app.stage.addChild(center);
 
-        // 格子
+        // 格子 (填满)
         const step = 73; const start = 5; const boxSize = 71;
         const POS = [];
         for(let i=0; i<7; i++) POS.push({x:start+i*step, y:start});
@@ -341,21 +398,15 @@
         if(squares.length) squares[0].highlight.visible = true;
     }
 
-    // === 3. 游戏交互 (混合逻辑) ===
+    // === 3. 交互 ===
     function addBet(id) {
         if(isSpinning) return;
         if(useMock && MOCK_DATA.balance < 10) return showToast("余额不足");
-        // 如果是API模式，余额检查在后端，前端只做简单判断
-
         sndClick.play();
         currentBets[id] += 10;
         document.getElementById(`bet-val-${id}`).innerText = currentBets[id];
-
-        // 模拟扣费(仅UI)
-        if(useMock) {
-            MOCK_DATA.balance -= 10;
-            refreshBalance();
-        }
+        if(useMock) { MOCK_DATA.balance -= 10; refreshBalance(); }
+        tgTrigger('light');
     }
 
     async function refreshBalance() {
@@ -376,42 +427,35 @@
         isSpinning = true;
         document.getElementById('startBtn').disabled = true;
         document.getElementById('winDisplay').innerText = "0";
+        tgTrigger('medium');
         sndSpin.play();
 
-        let targetIndex = 0;
-        let winAmount = 0;
+        let targetIndex = 0, winAmount = 0;
 
-        // 获取结果
         try {
             if(useMock) {
-                // 本地计算结果
                 targetIndex = Math.floor(Math.random() * 24);
                 const winId = BOARD_LAYOUT[targetIndex];
                 const fruit = FRUIT_CONFIG.find(x=>x.id==winId);
                 const bet = currentBets[winId] || 0;
                 winAmount = (winId===9) ? 200 : bet * fruit.multiplier;
-
-                await new Promise(r => setTimeout(r, 500)); // 模拟网络延迟
+                await new Promise(r => setTimeout(r, 500));
             } else {
-                // API 请求
                 const res = await axios.post('/api/game/spin', { bets: currentBets });
                 targetIndex = res.data.data.stop_index;
                 winAmount = res.data.data.win_amount;
             }
 
-            // 执行动画
             await runAnimation(targetIndex);
 
-            // 结算
             isSpinning = false; sndSpin.stop();
             document.getElementById('startBtn').disabled = false;
 
             if(winAmount > 0) {
-                sndWin.play();
+                sndWin.play(); tgNotify('success');
                 document.getElementById('winDisplay').innerText = winAmount;
                 if(useMock) MOCK_DATA.balance += winAmount;
                 refreshBalance();
-                // 闪烁特效
                 let c=0, t=setInterval(()=>{
                     squares[targetIndex].highlight.visible = !squares[targetIndex].highlight.visible;
                     if(++c>6) { clearInterval(t); squares[targetIndex].highlight.visible=true; }
@@ -421,9 +465,6 @@
             if(autoPlay) {
                 if((useMock ? MOCK_DATA.balance : 9999) >= totalBet) setTimeout(spin, 1500);
                 else { toggleAuto(); showToast("余额不足，自动停止"); }
-            } else {
-                // 清空下注 (可选)
-                // for(let k in currentBets) { currentBets[k]=0; document.getElementById(`bet-val-${k}`).innerText=0; }
             }
 
         } catch (e) {
@@ -443,13 +484,58 @@
                 if(curr >= 24) { curr = 0; rounds++; }
                 squares.forEach(s => s.highlight.visible = false);
                 squares[curr].highlight.visible = true;
-
-                if(rounds >= 3 && curr === target) {
-                    clearInterval(timer);
-                    resolve();
+                if(rounds >= 2 && curr === target) {
+                    clearInterval(timer); resolve();
                 }
-            }, 50); // 匀速跑灯
+            }, 50);
         });
+    }
+
+    // Wallet (Mock)
+    async function openWallet() {
+        if(useMock) { showToast("演示模式无需充值"); return; }
+        await loadChannels();
+        document.getElementById('walletModal').style.display='flex';
+        document.getElementById('walletBalance').innerText = document.getElementById('balanceDisplay').innerText;
+    }
+    function closeWallet() { document.getElementById('walletModal').style.display='none'; }
+    function switchTab(t) {
+        document.getElementById('tabDep').className = `tab-btn ${t==='deposit'?'active':''}`;
+        document.getElementById('tabWdr').className = `tab-btn ${t==='withdraw'?'active':''}`;
+        document.getElementById('panelDeposit').style.display = t==='deposit'?'block':'none';
+        document.getElementById('panelWithdraw').style.display = t==='withdraw'?'block':'none';
+    }
+    async function loadChannels() {
+        const list = document.getElementById('channelList');
+        try {
+            const res = await axios.get('/api/deposit/channels');
+            list.innerHTML = '';
+            if(!res.data.data.length) return list.innerHTML='暂无通道';
+            res.data.data.forEach(ch => {
+                const div = document.createElement('div');
+                div.className='channel-btn';
+                div.innerHTML=`<b>${ch.name}</b>`;
+                div.onclick = () => selectCh(ch, div);
+                list.appendChild(div);
+            });
+        } catch(e) { list.innerText='加载失败'; }
+    }
+    function selectCh(ch, el) {
+        activeChannel = ch;
+        document.querySelectorAll('.channel-btn').forEach(b=>b.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('depositInputArea').style.display='block';
+        document.getElementById('currentRate').innerText = ch.exchange_rate;
+    }
+    async function doDeposit() {
+        if(!activeChannel) return;
+        const amt = document.getElementById('depAmount').value;
+        try {
+            const res = await axios.post('/api/deposit', {amount:amt, method:activeChannel.slug});
+            const d = res.data.data;
+            if(d.type==='stars') tg.openInvoice(d.url.split('t.me/')[1], (s)=>{ if(s==='paid') { closeWallet(); refreshBalance(); } });
+            else if(d.type==='url') tg.openLink(d.url);
+        } catch(e) { showToast(e.message); }
     }
 
     function toggleAuto() { autoPlay=!autoPlay; document.querySelector('.btn-auto').style.color=autoPlay?'#76ff03':'#fff'; }
@@ -458,8 +544,10 @@
         t.innerText = msg; t.style.display='block';
         setTimeout(()=>t.style.display='none', 2000);
     }
+    function tgTrigger(s) { if(window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred(s); }
+    function tgNotify(t) { if(window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred(t); }
 
-    // 启动
+    // Start
     initGame();
 </script>
 </body>
