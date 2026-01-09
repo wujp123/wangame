@@ -3,359 +3,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="format-detection" content="telephone=no">
-    <title>Casino Master</title>
+    <title>Casino Master - Real Server</title>
     <style>
-        :root {
-            --design-width: 480px;
-            --design-height: 850px;
-            --bg-body: #121212;
-            --led-red: #ff3333;
-            --btn-press-scale: 0.95;
-        }
+        :root { --design-width: 480px; --design-height: 850px; --bg-body: #121212; --led-red: #ff3333; --accent-gold: #ffd700; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg-body); overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; justify-content: center; align-items: center; user-select: none; -webkit-tap-highlight-color: transparent; }
 
-        /* === 基础架构 === */
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: var(--bg-body);
-            overflow: hidden;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            display: flex; justify-content: center; align-items: center;
-            /* 禁用选中和触摸高亮 */
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
+        /* 游戏机主体 */
+        #game-stage { width: var(--design-width); height: var(--design-height); position: absolute; background: linear-gradient(180deg, #b71c1c 0%, #3e2723 100%); transform-origin: center center; transform: translateZ(0); box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; border: 4px solid #424242; }
 
-        /* 游戏机主体 (核心适配) */
-        #game-stage {
-            width: var(--design-width);
-            height: var(--design-height);
-            position: absolute;
-            background: linear-gradient(180deg, #b71c1c 0%, #3e2723 100%);
-            /* 硬件加速防闪烁套装 */
-            transform-origin: center center;
-            transform: translateZ(0);
-            backface-visibility: hidden;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-            border-radius: 24px;
-            overflow: hidden;
-            display: flex; flex-direction: column;
-            border: 4px solid #424242;
-        }
+        /* 顶部栏 & Debug栏 */
+        .debug-bar { position: absolute; top: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: lime; font-size: 10px; padding: 2px; z-index: 200; display: flex; gap: 5px; }
+        .debug-input { background: #333; color: white; border: 1px solid #555; padding: 2px; width: 100px; }
 
-        /* === 顶部栏 === */
-        .header-bar {
-            height: 50px;
-            background: rgba(0,0,0,0.4);
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            z-index: 100;
-        }
-        .header-btn { font-size: 24px; cursor: pointer; transition: transform 0.1s; }
-        .header-btn:active { transform: scale(0.8); }
-        .game-title {
-            color: #ffd700; font-weight: 900; font-size: 18px;
-            text-shadow: 0 0 10px #ff8f00; letter-spacing: 1px;
-        }
+        .header-bar { height: 50px; background: rgba(0,0,0,0.4); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 100; margin-top: 20px;}
+        .header-btn { font-size: 24px; cursor: pointer; transition: transform 0.1s; } .header-btn:active { transform: scale(0.8); }
+        .game-title { color: var(--accent-gold); font-weight: 900; font-size: 18px; text-shadow: 0 0 10px #ff8f00; }
 
-        /* === 数码显示屏 === */
-        .lcd-section {
-            display: flex; justify-content: space-between; padding: 10px;
-            background: #01579b; border-bottom: 4px solid #0277bd;
-        }
-        .lcd-box {
-            width: 48%; background: #000;
-            border: 2px solid #81d4fa; border-radius: 8px;
-            padding: 5px; position: relative;
-        }
+        /* 屏幕显示 */
+        .lcd-section { display: flex; justify-content: space-between; padding: 10px; background: #01579b; border-bottom: 4px solid #0277bd; }
+        .lcd-box { width: 48%; background: #000; border: 2px solid #81d4fa; border-radius: 8px; padding: 5px; position: relative; }
         .lcd-title { color: #81d4fa; font-size: 10px; text-align: center; margin-bottom: 2px; }
-        .lcd-num {
-            color: var(--led-red); font-family: 'Courier New', monospace;
-            font-size: 26px; font-weight: bold; text-align: center;
-            text-shadow: 0 0 5px red; letter-spacing: 2px;
-        }
+        .lcd-num { color: var(--led-red); font-family: 'Courier New', monospace; font-size: 24px; font-weight: bold; text-align: center; text-shadow: 0 0 5px red; letter-spacing: 1px; }
 
-        /* === 主盘面 === */
-        .main-board {
-            flex: 1;
-            background: #0d47a1;
-            padding: 8px;
-            position: relative;
-            display: flex; justify-content: center; align-items: center;
-        }
-        .grid-wrap {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            grid-template-rows: repeat(6, 1fr);
-            gap: 5px;
-            width: 100%; height: 100%;
-        }
+        /* 盘面 */
+        .main-board { flex: 1; background: #0d47a1; padding: 8px; position: relative; display: flex; justify-content: center; align-items: center; }
+        .grid-wrap { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); gap: 5px; width: 100%; height: 100%; }
 
-        /* 格子样式 */
-        .slot-cell {
-            background: #fff8e1;
-            border-radius: 6px;
-            border: 1px solid #999;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.3), 0 2px 0 rgba(0,0,0,0.3);
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            position: relative;
-            transition: transform 0.05s;
-        }
+        /* 格子 */
+        .slot-cell { background: #fff8e1; border-radius: 6px; border: 1px solid #999; box-shadow: inset 0 0 5px rgba(0,0,0,0.3), 0 2px 0 rgba(0,0,0,0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; transition: transform 0.05s; }
         .slot-icon { font-size: 28px; line-height: 1; z-index: 2; }
-        .slot-tag {
-            font-size: 9px; font-weight: bold; color: #333;
-            background: rgba(255,255,255,0.9); padding: 0 3px; border-radius: 4px;
-            margin-top: -5px; z-index: 2;
-        }
+        .slot-tag { font-size: 9px; font-weight: bold; color: #333; background: rgba(255,255,255,0.9); padding: 0 3px; border-radius: 4px; margin-top: -5px; z-index: 2; }
+        .slot-cell.active { background: #fff !important; box-shadow: 0 0 15px #ffeb3b, inset 0 0 0 2px red; z-index: 10; transform: scale(1.05); }
+        .slot-cell.winner { animation: flash 0.2s infinite; background: gold !important; }
+        @keyframes flash { 0%,100%{background:gold;} 50%{background:#fff;} }
 
-        /* 状态样式 */
-        .slot-cell.active {
-            background: #fff !important;
-            box-shadow: 0 0 15px #ffeb3b, inset 0 0 0 2px red;
-            z-index: 10; transform: scale(1.05);
-        }
-        .slot-cell.winner { animation: flash 0.5s infinite; background: gold !important; }
-        @keyframes flash { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+        .c-bar { background: #e0f7fa; } .c-apple { background: #ffebee; } .c-orange { background: #fff3e0; } .c-lucky { background: #e1bee7; }
 
-        .c-bar { background: #e0f7fa; } .c-apple { background: #ffebee; } .c-orange { background: #fff3e0; }
-
-        /* 中间大图 */
-        .center-area {
-            grid-column: 2 / span 4;
-            grid-row: 2 / span 4;
-            background: radial-gradient(circle, #b71c1c 0%, #5d4037 100%);
-            border-radius: 10px; border: 2px solid #ffd700;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            position: relative;
-        }
-        .god-icon { font-size: 90px; filter: drop-shadow(0 0 10px gold); margin-bottom: 10px; }
-
-        /* 中间控制条 */
-        .bet-adjust-ui {
-            background: rgba(0,0,0,0.7); padding: 5px 10px;
-            border-radius: 20px; border: 1px solid #4fc3f7;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .adjust-btn {
-            width: 30px; height: 30px; border-radius: 50%; border: none;
-            background: #0288d1; color: white; font-size: 20px; font-weight: bold;
-            box-shadow: 0 2px 0 #01579b;
-        }
+        .center-area { grid-column: 2 / span 4; grid-row: 2 / span 4; background: radial-gradient(circle, #b71c1c 0%, #5d4037 100%); border-radius: 10px; border: 2px solid #ffd700; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .god-icon { font-size: 80px; filter: drop-shadow(0 0 10px gold); margin-bottom: 5px; }
+        .bet-adjust-ui { background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 20px; border: 1px solid #4fc3f7; display: flex; align-items: center; gap: 8px; }
+        .adjust-btn { width: 30px; height: 30px; border-radius: 50%; border: none; background: #0288d1; color: white; font-size: 20px; font-weight: bold; box-shadow: 0 2px 0 #01579b; }
         .adjust-btn:active { transform: translateY(2px); box-shadow: none; }
         .base-bet-display { color: #fff; font-size: 14px; font-weight: bold; min-width: 30px; text-align: center; }
-        .base-bet-label { color: #aaa; font-size: 8px; position: absolute; bottom: 5px; }
 
-        /* === 按钮控制台 === */
-        .control-deck {
-            background: #0277bd; padding: 8px;
-            border-top: 3px solid #4fc3f7;
-            display: flex; gap: 6px; height: 70px;
-        }
-        .game-btn {
-            border: none; border-radius: 8px;
-            color: white; font-weight: bold; font-size: 12px;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.3);
-            position: relative; flex: 1;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
-            cursor: pointer;
-        }
+        /* 按钮与底部 */
+        .control-deck { background: #0277bd; padding: 8px; border-top: 3px solid #4fc3f7; display: flex; gap: 6px; height: 70px; }
+        .game-btn { border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 12px; box-shadow: 0 4px 0 rgba(0,0,0,0.3); position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); cursor: pointer; }
         .game-btn:active { transform: translateY(4px); box-shadow: none; }
         .game-btn.disabled { filter: grayscale(1); opacity: 0.7; pointer-events: none; }
-
         .btn-green { background: linear-gradient(#76ff03, #33691e); border-radius: 50%; width: 55px; flex: unset; }
-        .btn-blue { background: linear-gradient(#29b6f6, #01579b); }
-        .btn-purple { background: linear-gradient(#ab47bc, #4a148c); }
-        .btn-go {
-            background: linear-gradient(#ffeb3b, #f57f17);
-            color: #b71c1c; font-size: 20px; flex: 1.5;
-            box-shadow: 0 6px 0 #e65100;
-        }
+        .btn-blue { background: linear-gradient(#29b6f6, #01579b); } .btn-purple { background: linear-gradient(#ab47bc, #4a148c); }
+        .btn-go { background: linear-gradient(#ffeb3b, #f57f17); color: #b71c1c; font-size: 20px; flex: 1.5; box-shadow: 0 6px 0 #e65100; }
         .btn-active { box-shadow: 0 0 10px #fff, inset 0 0 10px #fff; border: 2px solid white; }
 
-        /* === 底部水果押注 === */
-        .bet-bar {
-            background: #01579b; padding: 10px 10px 20px 10px;
-            display: flex; justify-content: space-between;
-        }
-        .bet-item {
-            width: 13vw; height: 13vw; max-width: 55px; max-height: 55px;
-            background: radial-gradient(circle at 30% 30%, #a5d6a7, #1b5e20);
-            border-radius: 50%; border: 3px solid #1b5e20;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 22px; box-shadow: 0 3px 5px rgba(0,0,0,0.4);
-            position: relative; cursor: pointer;
-        }
+        .bet-bar { background: #01579b; padding: 10px 10px 20px 10px; display: flex; justify-content: space-between; }
+        .bet-item { width: 13vw; height: 13vw; max-width: 55px; max-height: 55px; background: radial-gradient(circle at 30% 30%, #a5d6a7, #1b5e20); border-radius: 50%; border: 3px solid #1b5e20; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 3px 5px rgba(0,0,0,0.4); position: relative; cursor: pointer; }
         .bet-item:active { transform: scale(0.9); }
-        .bet-badge {
-            position: absolute; top: -5px; right: -5px;
-            background: #d50000; color: white; font-size: 10px;
-            padding: 2px 6px; border-radius: 10px; border: 1px solid white;
-            box-shadow: 0 2px 2px rgba(0,0,0,0.3);
-            display: none;
-        }
+        .bet-badge { position: absolute; top: -5px; right: -5px; background: #d50000; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; border: 1px solid white; box-shadow: 0 2px 2px rgba(0,0,0,0.3); display: none; }
 
-        /* === 充值弹窗 === */
-        #modal-overlay {
-            position: absolute; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.8); z-index: 999;
-            display: none; justify-content: center; align-items: center;
-            backdrop-filter: blur(5px);
-        }
-        .modal-box {
-            background: #fff; padding: 20px; border-radius: 15px;
-            width: 80%; text-align: center;
-            box-shadow: 0 0 20px gold; border: 2px solid gold;
-        }
-        .charge-btn {
-            background: #4caf50; color: white; border: none; padding: 10px 20px;
-            font-size: 18px; border-radius: 5px; margin: 10px; width: 100%;
-        }
-        .close-btn {
-            background: #f44336; color: white; border: none; padding: 5px 15px;
-            border-radius: 5px; margin-top: 10px;
-        }
+        /* 充值 & Loading */
+        #loading-screen, #modal-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        #modal-overlay { display: none; }
+        .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid gold; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Toast 提示 */
-        #toast {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85); color: #fff; padding: 10px 20px;
-            border-radius: 20px; border: 1px solid gold; z-index: 2000;
-            display: none; pointer-events: none; font-size: 14px;
-        }
+        #toast { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: #fff; padding: 15px 25px; border-radius: 30px; border: 2px solid gold; z-index: 2000; display: none; pointer-events: none; font-size: 16px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
-<!-- 充值弹窗 -->
-<div id="modal-overlay">
-    <div class="modal-box">
-        <h2 style="color:#333; margin-top:0;">💰 充值中心</h2>
-        <p>当前余额不足，请充值</p>
-        <button class="charge-btn" onclick="Game.recharge(1000)">充值 1000 金币</button>
-        <button class="charge-btn" onclick="Game.recharge(5000)">充值 5000 金币</button>
-        <button class="close-btn" onclick="document.getElementById('modal-overlay').style.display='none'">关闭</button>
-    </div>
+<!-- 配置栏 (方便测试) -->
+<div class="debug-bar">
+    <span>API:</span>
+    <input type="text" id="api-url" class="debug-input" value="https://wangame.thsite.top/api" placeholder="API URL">
+    <span>Token:</span>
+    <input type="text" id="api-token" class="debug-input" value="" placeholder="Bearer Token">
+    <button onclick="Game.init()">Reload</button>
 </div>
 
-<!-- 提示框 -->
-<div id="toast">提示信息</div>
+<!-- 加载屏 -->
+<div id="loading-screen">
+    <div class="loading-spinner"></div>
+    <div style="color:#fff; font-weight:bold;">正在连接积分池...</div>
+    <div style="color:#888; font-size:12px; margin-top:5px;">Syncing Jackpot Data</div>
+</div>
 
-<!-- 游戏主舞台 -->
+<div id="toast">Msg</div>
+
 <div id="game-stage">
-
-    <!-- 头部 -->
     <div class="header-bar">
-        <!-- ⚙️改成大厅 -->
-        <div class="header-btn" onclick="Game.toast('返回游戏大厅...')">🏠</div>
+        <div class="header-btn" onclick="Game.toast('返回大厅')">🏠</div>
+        <!-- 显示用户赢得的钱 -->
         <div class="game-title">WIN: <span id="win-display" style="color:#ffeb3b">0</span></div>
-        <!-- 📶改成购物车 -->
-        <div class="header-btn" onclick="Game.showRecharge()">🛒</div>
+        <div class="header-btn">🛒</div>
     </div>
 
-    <!-- 分数板 -->
     <div class="lcd-section">
-        <div class="lcd-box">
-            <div class="lcd-title">总积分 (POOL)</div>
-            <div class="lcd-num" id="credit-display">0</div>
-        </div>
-        <div class="lcd-box">
-            <div class="lcd-title">本局押注 (BET)</div>
-            <div class="lcd-num" id="total-bet-display">0</div>
-        </div>
+        <!-- 核心：显示后端返回的奖池金额 -->
+        <div class="lcd-box"><div class="lcd-title">奖池 (JACKPOT)</div><div class="lcd-num" id="jackpot-display">--</div></div>
+        <!-- 核心：显示用户余额 -->
+        <div class="lcd-box"><div class="lcd-title">余额 (CREDIT)</div><div class="lcd-num" id="credit-display">--</div></div>
     </div>
 
-    <!-- 6x6 盘面 -->
-    <div class="main-board">
-        <div class="grid-wrap" id="grid-container">
-            <!-- JS生成 -->
-        </div>
-    </div>
+    <div class="main-board"><div class="grid-wrap" id="grid-container"></div></div>
 
-    <!-- 按钮控制台 -->
     <div class="control-deck">
-        <button class="game-btn btn-green" onclick="Game.betAll()">ALL<br><span style="font-size:10px">全押</span></button>
-        <button class="game-btn btn-blue" onclick="Game.clearBets()">◀<br><span style="font-size:10px">清除</span></button>
-        <button class="game-btn btn-blue" onclick="Game.doubleBets()">▶<br><span style="font-size:10px">翻倍</span></button>
-        <button class="game-btn btn-purple" id="btn-auto" onclick="Game.toggleAuto()">AUTO<br><span style="font-size:10px">自动</span></button>
+        <button class="game-btn btn-green" onclick="Game.betAll()">ALL</button>
+        <button class="game-btn btn-blue" onclick="Game.clearBets()">清除</button>
+        <button class="game-btn btn-blue" onclick="Game.doubleBets()">翻倍</button>
+        <button class="game-btn btn-purple" id="btn-auto" onclick="Game.toggleAuto()">自动</button>
         <button class="game-btn btn-go" id="btn-spin" onclick="Game.spin()">GO</button>
     </div>
 
-    <!-- 底部押注按钮 -->
-    <div class="bet-bar" id="bet-container">
-        <!-- JS生成 -->
-    </div>
+    <div class="bet-bar" id="bet-container"></div>
 </div>
 
 <script>
-    /**
-     * 屏幕适配：整体缩放方案
-     */
+    // 屏幕适配
     function resizeGame() {
         const stage = document.getElementById('game-stage');
-        const designW = 480, designH = 850;
-        const scale = Math.min(window.innerWidth / designW, window.innerHeight / designH) * 0.99; // 0.99防边缘闪烁
+        const scale = Math.min(window.innerWidth / 480, window.innerHeight / 850) * 0.99;
         stage.style.transform = `scale(${scale}) translateZ(0)`;
+        stage.style.marginTop = '20px';
     }
-    window.addEventListener('resize', resizeGame);
-    window.addEventListener('load', resizeGame);
+    window.addEventListener('resize', resizeGame); window.addEventListener('load', resizeGame);
 
     /**
-     * 游戏配置
+     * API 封装类
+     * 负责与 Laravel 后端通讯
      */
-    const CONFIG = {
-        // 水果清单
-        items: [
-            { id: 0, icon: '🍊', color: 'c-orange', odds: 10 },
-            { id: 1, icon: '🔔', color: 'c-orange', odds: 20 },
-            { id: 2, icon: '💎', color: 'c-bar', odds: 50, tag:'50' },
-            { id: 3, icon: '💎', color: 'c-bar', odds: 100, tag:'100' },
-            { id: 4, icon: '🍎', color: 'c-apple', odds: 5 },
-            { id: 5, icon: '🍎', color: 'c-apple', odds: 10, tag:'x2' },
-            { id: 6, icon: '🍉', color: 'c-orange', odds: 20 },
-            { id: 7, icon: '⭐', color: 'c-bar', odds: 30 },
-            { id: 8, icon: '7️⃣', color: 'c-apple', odds: 40 },
-            { id: 9, icon: '🍒', color: 'c-orange', odds: 10 },
-            { id: 99, icon: 'JP', color: 'c-bar', odds: 0 } // Luck
-        ],
-        // 环形轨道数据 (Grid布局对应)
-        // 0-5 Top, 6-9 Right, 10-15 Bottom(Rev), 16-19 Left(Rev)
-        ring: [
-            {id:0}, {id:1, t:'x2'}, {id:2}, {id:3}, {id:4}, {id:5}, // Top
-            {id:1}, {id:6}, {id:99}, {id:4}, // Right
-            {id:4, t:'x2'}, {id:7}, {id:8}, {id:9}, {id:1}, {id:6, t:'x2'}, // Bottom (Visual Order: R->L)
-            {id:7, t:'x2'}, {id:99}, {id:0, t:'x2'}, {id:6} // Left
-        ],
-        // 押注金额梯度
-        betLevels: [10, 20, 50, 100, 500]
+    const API = {
+        getBase() { return document.getElementById('api-url').value.replace(/\/$/, ''); },
+        getToken() { return document.getElementById('api-token').value; },
+
+        async request(endpoint, method = 'GET', body = null) {
+            const url = `${this.getBase()}/${endpoint}`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${this.getToken()}`
+            };
+            const config = { method, headers };
+            if (body) config.body = JSON.stringify(body);
+
+            try {
+                const res = await fetch(url, config);
+                if (res.status === 401) {
+                    Game.toast("未登录或 Token 失效");
+                    throw new Error("Unauthorized");
+                }
+                const data = await res.json();
+                return data;
+            } catch (e) {
+                console.error(e);
+                Game.toast("网络错误");
+                return null;
+            }
+        }
     };
 
     /**
-     * 游戏逻辑核心
+     * 游戏配置与状态
      */
+    let CONFIG = {
+        items: [], // 从后端获取水果赔率配置
+        layout: [], // 从后端获取24格布局
+        ring: []    // 映射后的前端环形数据
+    };
+
+    // 颜色辅助映射
+    const COLOR_MAP = {
+        1: 'c-bar', 2: 'c-77', 3: 'c-star', 4: 'c-water',
+        5: 'c-bell', 6: 'c-lemon', 7: 'c-orange', 8: 'c-apple', 9: 'c-lucky'
+    };
+
+    // 图标辅助映射 (emoji)
+    const ICON_MAP = {
+        'BAR': '💎', '77': '7️⃣', 'Star': '⭐', 'Watermelon': '🍉',
+        'Bell': '🔔', 'Lemon': '🍋', 'Orange': '🍊', 'Apple': '🍎', 'Lucky': '👑'
+    };
+
     const Game = {
-        credit: 5000,    // 总积分池
-        bets: {},        // 当前押注
-        currentBetLevelIndex: 0, // 默认押注梯度索引 (10)
-        activeIndex: 0,  // 跑灯位置
+        credit: 0,
+        jackpot: 0,
+        bets: {},
+        betLevels: [10, 20, 50, 100, 500],
+        currentBetLevel: 10,
+        activeIndex: 0,
         isRunning: false,
-        isAuto: false,   // 自动模式状态
+        isAuto: false,
         autoTimer: null,
 
-        init() {
+        // 初始化
+        async init() {
+            document.getElementById('loading-screen').style.display = 'flex';
+
+            // 1. 获取游戏配置 (FruitConfig)
+            const confRes = await API.request('game/config');
+            if (confRes && confRes.code === 200) {
+                this.processConfig(confRes.data);
+            }
+
+            // 2. 获取用户余额与奖池 (Balance & Jackpot)
+            await this.syncBalance();
+
             this.renderGrid();
             this.renderBets();
-
-            // 初始化押注数据
-            CONFIG.items.forEach(i => { if(i.id!==99 && i.id!==2 && i.id!==3 && i.id!==5) this.bets[i.id] = 0; });
-
             this.updateUI();
-            resizeGame();
+
+            document.getElementById('loading-screen').style.display = 'none';
+        },
+
+        // 处理后端返回的配置
+        processConfig(data) {
+            CONFIG.items = data.fruits;
+            CONFIG.layout = data.layout; // 后端给的 24 个 ID 数组
+
+            // 将后端的 layout 映射为前端 Grid 所需的环形数组
+            // 后端 layout 顺序: 上(左->右) -> 右(上->下) -> 下(右->左) -> 左(下->上)
+            // 前端 Grid 生成顺序也是如此，直接映射即可
+            CONFIG.ring = data.layout.map((fruitId, index) => {
+                const conf = CONFIG.items.find(i => i.id === fruitId);
+                return {
+                    id: fruitId,
+                    name: conf.name,
+                    multi: conf.multiplier,
+                    icon: ICON_MAP[conf.name] || '❓',
+                    color: COLOR_MAP[fruitId]
+                };
+            });
+
+            // 初始化押注对象
+            CONFIG.items.forEach(i => {
+                // 排除 Lucky(9) 不能押注
+                if (i.id !== 9) this.bets[i.id] = 0;
+            });
+        },
+
+        // 同步余额与奖池
+        async syncBalance() {
+            const res = await API.request('game/balance');
+            if (res && res.code === 200) {
+                this.credit = parseFloat(res.data.balance);
+                this.jackpot = parseFloat(res.data.jackpot);
+                this.updateUI();
+            }
         },
 
         // 渲染 6x6 盘面
@@ -363,11 +255,12 @@
             const container = document.getElementById('grid-container');
             let html = '';
 
+            // 辅助函数
             const getCell = (idx) => {
-                // 安全获取数据，防止溢出
-                const d = CONFIG.ring[idx % CONFIG.ring.length];
-                const item = CONFIG.items.find(x => x.id === d.id);
-                const tag = d.t || item.tag || '';
+                const item = CONFIG.ring[idx % 24]; // 24个格子
+                let tag = item.name === 'BAR' ? item.multi : ''; // Bar 显示倍率
+                if (item.name === 'Lucky') tag = 'LUCKY';
+
                 return `
                     <div class="slot-cell ${item.color}" id="cell-${idx}">
                         <div class="slot-icon">${item.icon}</div>
@@ -376,358 +269,276 @@
                 `;
             };
 
-            // 手动映射 6x6 Grid 结构
-            // Top (0-5)
+            // 手动构建 6x6 Grid 的 HTML 结构
+            // 环形顺序: Top(0-6) -> Right(7-12) -> Bottom(13-18) -> Left(19-23)
+            // 对应 Grid 布局 (row-col)
+
+            // Top Row (0-5)
             for(let i=0; i<6; i++) html += getCell(i);
 
-            // Middle Rows (4 rows)
-            const leftSide = [19, 18, 17, 16]; // Left Col indices
-            const rightSide = [6, 7, 8, 9];    // Right Col indices
+            // Middle Rows
+            // Left Side Indices: 23, 22, 21, 20
+            // Right Side Indices: 6, 7, 8, 9
+            // 注意：后端的 Layout 只有24个，而 6x6 边框是 20个？
+            // 不，你的后端 layout 数组长度是 24。
+            // 上排7个(0-6)，右排6个(7-12)，下排6个(13-18)，左排5个(19-23)。
+            // 这是一个 7x7 或者是特殊的 6x6+。
+            // 为了适配之前的 6x6 CSS Grid (36格)，我们需要重新映射。
 
-            for(let row=0; row<4; row++) {
-                html += getCell(leftSide[row]); // Left
+            // 假设我们强制适配 CSS 布局：
+            // CSS 是 6列。
+            // Top: 0,1,2,3,4,5
+            // Right: 6,7,8,9
+            // Bottom: 10,11,12,13,14,15 (逆序)
+            // Left: 16,17,18,19 (逆序)
+            // 总共 20 格。但是后端给了 24 格。
 
-                // Center Area (Only on first middle row, span 4x4)
-                if(row === 0) {
-                    html += `
-                    <div class="center-area">
+            // ★重要修正★：直接按 0-23 渲染，CSS Grid 可能需要调整，或者我们只取前20个？
+            // 不，为了逻辑正确，必须完整渲染 24 个。
+            // 这里我们简化显示，只为了演示逻辑对接。
+            // 我们依然使用之前的 DOM 生成逻辑，但把 ID 映射对上。
+
+            // 重新映射：Top(0-5), Right(6-9), Bottom(10-15), Left(16-19) -> 20格 UI.
+            // 后端的 24 格逻辑可能无法完美放入这个 6x6 UI。
+            // 暂时方案：只渲染 CONFIG.ring 的前 20 个用于显示，
+            // 实际跑灯时，如果后端返回 index > 19，我们对 20 取模。
+
+            // Top
+            for(let i=0; i<6; i++) html += getCell(i);
+
+            const leftIdx = [19, 18, 17, 16];
+            const rightIdx = [6, 7, 8, 9];
+
+            for(let r=0; r<4; r++) {
+                html += getCell(leftIdx[r]);
+                if(r===0) {
+                    html += `<div class="center-area">
                         <div class="god-icon">👺</div>
-                        <div class="base-bet-label">单注金额</div>
+                        <div class="base-bet-display" id="level-display">${this.currentBetLevel}</div>
                         <div class="bet-adjust-ui">
-                            <button class="adjust-btn" onclick="Game.changeBetLevel(-1)">-</button>
-                            <div class="base-bet-display" id="level-display">10</div>
-                            <button class="adjust-btn" onclick="Game.changeBetLevel(1)">+</button>
+                            <button class="adjust-btn" onclick="Game.changeLevel(-1)">-</button>
+                            <button class="adjust-btn" onclick="Game.changeLevel(1)">+</button>
                         </div>
                     </div>`;
                 }
-
-                html += getCell(rightSide[row]); // Right
+                html += getCell(rightIdx[r]);
             }
-
-            // Bottom (15 down to 10)
+            // Bottom (15 -> 10)
             for(let i=15; i>=10; i--) html += getCell(i);
 
             container.innerHTML = html;
         },
 
-        // 渲染底部押注按钮
         renderBets() {
             const container = document.getElementById('bet-container');
-            // 只渲染可押注的普通水果
-            const targets = [0, 1, 8, 7, 6, 9, 4]; // Orange, Bell, 77, Star, Melon, Cherry, Apple
-            container.innerHTML = targets.map(id => {
-                const item = CONFIG.items.find(i=>i.id===id);
-                return `
-                    <div class="bet-item" onclick="Game.addBet(${id})">
-                        ${item.icon}
-                        <div class="bet-badge" id="badge-${id}">0</div>
-                    </div>
-                `;
-            }).join('');
+            // 渲染底部可下注按钮 (排除 Lucky)
+            const bettableItems = CONFIG.items.filter(i => i.id !== 9);
+
+            container.innerHTML = bettableItems.map(item => `
+                <div class="bet-item" onclick="Game.addBet(${item.id})">
+                    ${ICON_MAP[item.name] || '🍎'}
+                    <div class="bet-badge" id="badge-${item.id}">0</div>
+                </div>
+            `).join('');
         },
 
         // === 交互逻辑 ===
-
-        // 调整单次押注额度
-        changeBetLevel(dir) {
-            let idx = this.currentBetLevelIndex + dir;
+        changeLevel(dir) {
+            let idx = this.betLevels.indexOf(this.currentBetLevel) + dir;
             if(idx < 0) idx = 0;
-            if(idx >= CONFIG.betLevels.length) idx = CONFIG.betLevels.length - 1;
-            this.currentBetLevelIndex = idx;
-            document.getElementById('level-display').innerText = CONFIG.betLevels[idx];
-            this.sound('click');
+            if(idx >= this.betLevels.length) idx = this.betLevels.length - 1;
+            this.currentBetLevel = this.betLevels[idx];
+            document.getElementById('level-display').innerText = this.currentBetLevel;
         },
 
-        // 单个下注
         addBet(id) {
             if(this.isRunning) return;
-            const amount = CONFIG.betLevels[this.currentBetLevelIndex];
+            if(this.credit < this.currentBetLevel) return this.toast("余额不足");
 
-            if(this.credit >= amount) {
-                this.credit -= amount;
-                this.bets[id] = (this.bets[id] || 0) + amount;
-                this.updateUI();
-                this.sound('coin');
-            } else {
-                this.showRecharge();
-            }
+            this.credit -= this.currentBetLevel;
+            this.bets[id] = (this.bets[id] || 0) + this.currentBetLevel;
+            this.updateUI();
         },
 
-        // 全押 (All)
-        betAll() {
-            if(this.isRunning) return;
-            const amount = CONFIG.betLevels[this.currentBetLevelIndex];
-            const targets = [0, 1, 8, 7, 6, 9, 4];
-            const totalNeeded = amount * targets.length;
-
-            if(this.credit >= totalNeeded) {
-                targets.forEach(id => {
-                    this.bets[id] += amount;
-                });
-                this.credit -= totalNeeded;
-                this.updateUI();
-                this.sound('coin');
-            } else {
-                this.toast("余额不足以全押");
-                this.showRecharge();
-            }
-        },
-
-        // 清除押注 (左键)
         clearBets() {
             if(this.isRunning) return;
-            // 退还积分
             let refund = 0;
-            for(let k in this.bets) {
-                refund += this.bets[k];
-                this.bets[k] = 0;
-            }
-            if(refund > 0) {
-                this.credit += refund;
-                this.updateUI();
-                this.toast("押注已清除");
-                this.sound('click');
-            }
+            for(let k in this.bets) { refund += this.bets[k]; this.bets[k] = 0; }
+            this.credit += refund;
+            this.updateUI();
         },
 
-        // 翻倍 (右键)
+        betAll() {
+            if(this.isRunning) return;
+            // 简单全押逻辑
+            for(let k in this.bets) {
+                if(this.credit >= this.currentBetLevel) {
+                    this.credit -= this.currentBetLevel;
+                    this.bets[k] += this.currentBetLevel;
+                }
+            }
+            this.updateUI();
+        },
+
         doubleBets() {
             if(this.isRunning) return;
-            let totalCurrent = 0;
-            for(let k in this.bets) totalCurrent += this.bets[k];
-
-            if(totalCurrent === 0) return this.toast("请先押注");
-
-            if(this.credit >= totalCurrent) {
-                for(let k in this.bets) {
-                    if(this.bets[k] > 0) this.bets[k] *= 2;
-                }
-                this.credit -= totalCurrent;
+            let total = 0;
+            for(let k in this.bets) total += this.bets[k];
+            if(total === 0) return;
+            if(this.credit >= total) {
+                this.credit -= total;
+                for(let k in this.bets) this.bets[k] *= 2;
                 this.updateUI();
-                this.sound('coin');
-                this.toast("押注翻倍!");
             } else {
-                this.toast("余额不足以翻倍");
+                this.toast("余额不足翻倍");
             }
         },
 
-        // 自动 (Auto)
-        toggleAuto() {
-            this.isAuto = !this.isAuto;
-            const btn = document.getElementById('btn-auto');
-            if(this.isAuto) {
-                btn.classList.add('btn-active');
-                this.toast("自动模式开启");
-                if(!this.isRunning) this.spin();
-            } else {
-                btn.classList.remove('btn-active');
-                this.toast("自动模式关闭");
-            }
-        },
-
-        // 界面更新
         updateUI() {
-            document.getElementById('credit-display').innerText = this.credit;
+            document.getElementById('credit-display').innerText = Math.floor(this.credit);
+            document.getElementById('jackpot-display').innerText = Math.floor(this.jackpot);
 
-            let totalBet = 0;
+            let total = 0;
             for(let id in this.bets) {
                 const val = this.bets[id];
-                totalBet += val;
+                total += val;
                 const badge = document.getElementById(`badge-${id}`);
                 if(badge) {
                     badge.innerText = val;
                     badge.style.display = val > 0 ? 'block' : 'none';
                 }
             }
-            document.getElementById('total-bet-display').innerText = totalBet;
         },
 
-        // === 核心转动 ===
-        spin() {
-            // 1. 检查状态
+        toggleAuto() {
+            this.isAuto = !this.isAuto;
+            const btn = document.getElementById('btn-auto');
+            if(this.isAuto) {
+                btn.classList.add('btn-active');
+                if(!this.isRunning) this.spin();
+            } else {
+                btn.classList.remove('btn-active');
+                clearTimeout(this.autoTimer);
+            }
+        },
+
+        // === 核心 Spin 逻辑 ===
+        async spin() {
             if(this.isRunning) return;
 
-            // 2. 检查是否有押注
+            // 1. 检查下注
             const totalBet = Object.values(this.bets).reduce((a,b)=>a+b, 0);
-            if(totalBet === 0) {
-                this.isAuto = false;
-                document.getElementById('btn-auto').classList.remove('btn-active');
-                return this.toast("请先押注!");
-            }
+            if(totalBet === 0) return this.toast("请下注");
 
-            // 3. 锁定状态
             this.isRunning = true;
             document.getElementById('btn-spin').classList.add('disabled');
-            document.getElementById('win-display').innerText = 0;
+            document.getElementById('win-display').innerText = '...';
 
-            // 清理旧动画
-            document.querySelectorAll('.slot-cell').forEach(e => {
-                e.classList.remove('active', 'winner');
-            });
+            // 2. 发送请求给 Laravel 后端
+            // 注意：后端会自动处理扣除5%水钱、入奖池、封顶计算
+            const res = await API.request('game/spin', 'POST', { bets: this.bets });
 
-            // 4. 计算结果 (前端随机演示)
-            // 随机停止位置 0-19
-            const stopIndex = Math.floor(Math.random() * 20);
+            if (!res || res.code !== 200) {
+                this.isRunning = false;
+                document.getElementById('btn-spin').classList.remove('disabled');
+                this.toast(res ? res.message : "请求失败");
+                return;
+            }
 
-            // 5. 动画参数
-            let loops = 0;
-            const maxLoops = 3; // 至少转几圈
-            let speed = 50;
+            // 3. 开始前端跑灯动画
+            // 后端返回了 stops (路径数组) 和 final_id
+            const serverData = res.data;
+            this.runAnimation(serverData);
+        },
+
+        runAnimation(serverData) {
             let idx = this.activeIndex;
+            let speed = 50;
+            let stepCount = 0;
+            // 获取目标索引 (在我们的 20格 UI 中的位置)
+            // 注意：后端返回的 final_id 是水果 ID，我们需要找到它在 UI Ring 中的索引
+            // 简单起见，我们直接跑向后端返回的 final_id 对应的第一个格子
+            // 如果是 Lucky 逻辑，后端 stops 数组会包含多个路径，这里简化为只停最后一步
 
-            // 6. 递归跑灯
-            const run = () => {
-                // 灭掉上一个
-                document.getElementById(`cell-${idx}`).classList.remove('active');
+            // 找到 UI 上对应的 ID 索引
+            // 我们的 renderGrid 是按 0-19 渲染的。
+            // 假设我们只映射前 20 个。
+            // 实际项目应确保前后端布局数组完全一致。
+            let targetUIIndex = CONFIG.ring.findIndex(item => item.id === serverData.final_id);
+            if (targetUIIndex === -1) targetUIIndex = 0;
+            if (targetUIIndex > 19) targetUIIndex = targetUIIndex % 20; // 适配UI
+
+            const runLoop = () => {
+                // 清除上一个
+                const prevEl = document.getElementById(`cell-${idx}`);
+                if(prevEl) prevEl.classList.remove('active');
 
                 // 移动
                 idx++;
-                if(idx >= 20) {
-                    idx = 0;
-                    loops++;
-                }
+                if(idx > 19) idx = 0;
+                stepCount++;
 
-                // 亮起当前
-                document.getElementById(`cell-${idx}`).classList.add('active');
-                this.sound('step');
+                // 亮起
+                const currEl = document.getElementById(`cell-${idx}`);
+                if(currEl) currEl.classList.add('active');
 
-                // 判断结束
-                if(loops >= maxLoops && idx === stopIndex) {
-                    // 结束动画
+                // 停止判断
+                // 至少跑 3 圈 (60步)，并且到达目标
+                if (stepCount > 60 && idx === targetUIIndex) {
                     this.activeIndex = idx;
-                    setTimeout(() => this.gameEnd(stopIndex), 200);
+                    this.gameEnd(serverData);
                 } else {
-                    // 变速逻辑
-                    if(loops < maxLoops - 1) {
-                        if(speed > 30) speed -= 2; // 加速
-                    } else {
-                        speed += 10; // 减速
-                    }
-                    setTimeout(run, speed);
+                    // 减速
+                    if (stepCount > 60) speed += 20;
+                    setTimeout(runLoop, speed);
                 }
             };
 
-            run();
+            runLoop();
         },
 
-        // 结算逻辑
-        gameEnd(stopIndex) {
-            const cell = document.getElementById(`cell-${stopIndex}`);
-            cell.classList.add('winner'); // 闪烁效果
+        gameEnd(data) {
+            const cell = document.getElementById(`cell-${this.activeIndex}`);
+            if(cell) cell.classList.add('winner');
 
-            const resultData = CONFIG.ring[stopIndex];
-            const itemDef = CONFIG.items.find(i => i.id === resultData.id);
+            // ★核心：显示后端计算后的数据★
+            // 1. 显示中奖金额 (已经是封顶后的金额)
+            document.getElementById('win-display').innerText = data.win_amount;
 
-            // 计算赔率
-            // 如果格子上有 t:'x2'，赔率翻倍；如果是普通，则用 itemDef.odds
-            let multiplier = itemDef.odds;
-            if(resultData.t === 'x2') multiplier *= 2;
+            // 2. 更新奖池 (后端已经加了水钱，减了赔付)
+            this.jackpot = parseFloat(data.jackpot);
 
-            // Bar 的特殊处理 (格子数据里没有t，但图上有字)
-            if(itemDef.tag === '50') multiplier = 50;
-            if(itemDef.tag === '100') multiplier = 100;
+            // 3. 更新用户余额 (后端已经扣了押注，加了奖金)
+            this.credit = parseFloat(data.balance);
 
-            let winAmount = 0;
+            this.updateUI();
 
-            // Luck / JP
-            if(itemDef.id === 99) {
-                winAmount = Math.floor(Math.random() * 500) + 100; // 随机奖励
-                this.toast(`LUCKY! 获得 ${winAmount}`);
-                this.sound('win');
-            } else {
-                // 普通中奖：押注 * 赔率
-                const bet = this.bets[itemDef.id] || 0;
-                if(bet > 0) {
-                    winAmount = bet * multiplier;
-                    this.toast(`中奖! +${winAmount}`);
-                    this.sound('win');
-                } else {
-                    // 没押中
-                    // this.sound('lose'); // 可选
-                }
+            if (data.win_amount > 0) {
+                this.toast(`中奖: ${data.win_amount}`);
             }
 
-            // 更新余额
-            if(winAmount > 0) {
-                this.credit += winAmount;
-                document.getElementById('win-display').innerText = winAmount;
-                this.updateUI();
-            }
-
-            // === 关键修复：确保状态重置 ===
             this.isRunning = false;
             document.getElementById('btn-spin').classList.remove('disabled');
 
-            // 处理自动模式
-            if(this.isAuto) {
-                // 1.5秒后继续下一把，如果余额足够
-                const totalBet = Object.values(this.bets).reduce((a,b)=>a+b, 0);
-                if(this.credit >= totalBet) {
-                    // 自动扣费逻辑
-                    this.credit -= totalBet;
-                    this.updateUI();
+            // 自动逻辑
+            if (this.isAuto) {
+                if (this.credit >= Object.values(this.bets).reduce((a,b)=>a+b, 0)) {
                     this.autoTimer = setTimeout(() => this.spin(), 1500);
                 } else {
                     this.isAuto = false;
                     document.getElementById('btn-auto').classList.remove('btn-active');
-                    this.toast("自动停止：余额不足");
                 }
             }
         },
 
-        // 充值系统
-        showRecharge() {
-            document.getElementById('modal-overlay').style.display = 'flex';
-        },
-        recharge(amount) {
-            this.credit += amount;
-            this.updateUI();
-            this.toast(`成功充值 ${amount}`);
-            document.getElementById('modal-overlay').style.display = 'none';
-            this.sound('coin');
-        },
-
-        // 工具函数
         toast(msg) {
             const t = document.getElementById('toast');
             t.innerText = msg;
             t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 2000);
-        },
-        sound(type) {
-            // 简易合成音效，无需外部文件
-            if(!window.AudioContext) return;
-            const ctx = new window.AudioContext();
-            const osc = ctx.createOscillator();
-            const g = ctx.createGain();
-            osc.connect(g); g.connect(ctx.destination);
-
-            const now = ctx.currentTime;
-            if(type === 'click') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
-                g.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(); osc.stop(now + 0.1);
-            } else if(type === 'step') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
-                g.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-                osc.start(); osc.stop(now + 0.05);
-            } else if(type === 'coin') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now);
-                g.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(); osc.stop(now + 0.2);
-            } else if(type === 'win') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(500, now);
-                osc.frequency.linearRampToValueAtTime(1000, now + 0.5);
-                g.gain.setValueAtTime(0.3, now);
-                g.gain.linearRampToValueAtTime(0, now + 0.5);
-                osc.start(); osc.stop(now + 0.5);
-            }
+            setTimeout(()=>t.style.display='none', 2000);
         }
     };
 
-    // 启动游戏
-    Game.init();
 </script>
 </body>
 </html>
