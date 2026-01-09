@@ -2,747 +2,556 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fruit Machine Pro</title>
-    <!-- 依赖库 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Royal Fruit Machine</title>
+
+    <!-- 核心依赖 -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://pixijs.download/v7.x/pixi.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto:wght@500;900&display=swap');
+
+        :root {
+            --bg-body: #121212;
+            --machine-red: #b71c1c;
+            --panel-blue: linear-gradient(180deg, #1e88e5 0%, #0d47a1 100%);
+            --gold-text: #ffd700;
+            --led-bg: #000;
+            --led-red: #ff3d00;
+            --led-green: #76ff03;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 
         body {
-            background-color: #000;
-            margin: 0; padding: 0; overflow: hidden;
-            display: flex; justify-content: center; align-items: flex-start;
-            height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+            margin: 0; padding: 0;
+            background-color: var(--bg-body);
+            height: 100vh; width: 100vw;
+            overflow: hidden;
+            font-family: 'Roboto', sans-serif;
+            display: flex; justify-content: center;
         }
 
-        #app-scaler { transform-origin: top center; width: 500px; padding-bottom: 50px; }
-
-        .machine-body {
-            width: 100%;
-            background: linear-gradient(to bottom, #b71c1c, #8e0000);
-            border-radius: 0 0 30px 30px; padding: 15px; box-sizing: border-box;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.5); border-bottom: 5px solid #ff4d4d;
+        /* --- 主容器：纵向 Flex 布局 --- */
+        #app-root {
+            width: 100%; height: 100%;
+            max-width: 500px; /* 平板限制宽度 */
+            background: #3e2723;
+            display: flex; flex-direction: column;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            position: relative;
         }
 
-        /* 奖池面板 */
-        .jackpot-panel {
-            background: linear-gradient(to bottom, #3e2723, #000);
-            border: 2px solid #ffd700; border-radius: 10px; padding: 5px 15px;
-            margin-bottom: 10px; text-align: center; box-shadow: 0 0 15px #ff6f00;
-            position: relative; overflow: hidden;
-        }
-        .jackpot-label { color: #ffca28; font-size: 10px; letter-spacing: 2px; font-weight: bold; }
-        .jackpot-value {
-            font-family: 'Orbitron', monospace; color: #fff176; font-size: 24px;
-            text-shadow: 0 0 10px #ffd700;
+        /* 1. 顶部 LED 信息区 */
+        .header-lcd {
+            flex: 0 0 60px;
+            background: linear-gradient(to bottom, #3e2723, #210e0e);
+            border-bottom: 2px solid #ffd700;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 10px;
+            z-index: 10;
         }
 
-        /* 屏幕信息 */
-        .screen-panel {
-            background: linear-gradient(to bottom, #1565c0, #0d47a1);
-            border-radius: 10px; padding: 10px; margin-bottom: 10px;
-            border: 2px solid #42a5f5; display: flex; justify-content: space-between;
-        }
-        .lcd-group { text-align: center; flex: 1; }
-        .lcd-label { color: #81d4fa; font-size: 10px; margin-bottom: 2px; font-weight: bold; }
-        .lcd-display { background: #000; border: 1px solid #555; border-radius: 4px; padding: 2px 5px; margin: 0 5px;}
-        .lcd-value { font-family: 'Orbitron', monospace; color: #ff5252; font-size: 20px; letter-spacing: 1px; }
+        .lcd-group { display: flex; flex-direction: column; align-items: center; }
+        .lcd-label { color: #81d4fa; font-size: 10px; margin-bottom: 2px; font-weight: bold; letter-spacing: 1px; }
 
-        /* 游戏区域 */
-        #game-container {
-            width: 470px; height: 470px; margin: 0 auto 10px auto;
-            background: radial-gradient(circle, #fff8e1, #ffecb3);
-            border-radius: 10px; border: 4px solid #333;
+        .lcd-screen {
+            background: #000; border: 1px solid #555; border-radius: 4px;
+            padding: 2px 8px; min-width: 70px; text-align: right;
+            box-shadow: inset 0 0 5px rgba(255,255,255,0.1);
+        }
+
+        .lcd-val { font-family: 'Orbitron', monospace; font-size: 16px; line-height: 1.2; }
+        .val-win { color: var(--led-red); text-shadow: 0 0 4px var(--led-red); }
+        .val-credit { color: var(--led-green); text-shadow: 0 0 4px var(--led-green); }
+
+        .jackpot-group { flex: 1; text-align: center; margin: 0 5px; }
+        .jackpot-val {
+            font-family: 'Orbitron'; color: var(--gold-text); font-size: 18px;
+            text-shadow: 0 0 10px #ff6f00;
+        }
+
+        /* 2. 中部游戏画布 (自适应) */
+        #game-stage {
+            flex: 1; /* 占据剩余所有高度 */
+            background: radial-gradient(circle, #5d4037 10%, #3e2723 90%);
+            position: relative;
             display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+            border-left: 5px solid var(--machine-red);
+            border-right: 5px solid var(--machine-red);
         }
 
-        /* 控制区 */
+        /* 3. 底部控制台 (核心 UI) */
         .control-panel {
-            background: linear-gradient(to bottom, #1976d2, #0d47a1);
-            border-radius: 15px; padding: 10px; border-top: 2px solid #64b5f6;
+            flex: 0 0 auto; /* 高度自适应内容 */
+            background: var(--panel-blue);
+            border-top: 3px solid #90caf9;
+            padding: 8px;
+            padding-bottom: max(10px, env(safe-area-inset-bottom)); /* 适配 iPhone X+ 底部条 */
+            display: flex; flex-direction: column; gap: 8px;
         }
-        .func-buttons { display: flex; gap: 5px; margin-bottom: 10px; }
-        .btn-large {
-            flex: 1; height: 50px; border-radius: 8px; border: none;
-            color: white; font-weight: bold; font-size: 16px; cursor: pointer;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.4);
-        }
-        .btn-large:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.4); }
-        .btn-green { background: linear-gradient(#66bb6a, #2e7d32); }
-        .btn-purple { background: linear-gradient(#ab47bc, #6a1b9a); }
-        .btn-yellow { background: linear-gradient(#ffee58, #fbc02d); color: #b71c1c; font-size: 20px; }
-        .btn-blue { background: linear-gradient(#42a5f5, #1565c0); }
 
-        /* 下注按钮 */
-        .bet-buttons { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
-        .bet-unit { display: flex; flex-direction: column; align-items: center; }
+        /* 赔率显示条 */
+        .odds-strip {
+            display: flex; justify-content: space-between;
+            background: rgba(0,0,0,0.3); padding: 4px 6px; border-radius: 4px;
+        }
+        .odds-tag { color: rgba(255,255,255,0.7); font-size: 9px; font-weight: bold; }
+
+        /* 下注按钮网格 */
+        .bet-grid {
+            display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+        }
+
+        .bet-unit { display: flex; flex-direction: column; gap: 2px; }
+
         .bet-lcd {
-            background: #000; color: #fff; font-family: 'Orbitron', monospace; width: 100%;
-            text-align: center; font-size: 10px; border: 1px solid #555; margin-bottom: 3px;
+            background: #000; color: #fff; text-align: center;
+            font-family: 'Orbitron'; font-size: 9px; padding: 2px 0;
+            border: 1px solid #444; border-radius: 2px;
         }
-        .btn-fruit {
-            width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
-            box-shadow: 0 3px 0 rgba(0,0,0,0.5), inset 0 3px 6px rgba(255,255,255,0.3);
-            color: #fff; text-shadow: 1px 1px 0 #000; font-size: 10px; font-weight: bold; padding: 0;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .btn-fruit:active { transform: translateY(3px); box-shadow: none; }
 
-        /* 动态生成的赔率条 */
-        #oddsDisplayContainer {
-            display: flex; justify-content: space-between; margin-top: 5px;
-            color: #fff; font-size: 9px; opacity: 0.8; padding: 0 5px;
+        .btn-fruit {
+            aspect-ratio: 1; width: 100%;
+            border-radius: 6px; border: none;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; cursor: pointer; position: relative;
+            box-shadow: 0 3px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+            transition: transform 0.1s;
         }
+        .btn-fruit:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.4); }
 
         /* 颜色类 */
-        .c-bar { background: linear-gradient(#81c784, #2e7d32); }
-        .c-77 { background: linear-gradient(#ba68c8, #7b1fa2); }
+        .c-bar { background: linear-gradient(#66bb6a, #2e7d32); }
+        .c-77 { background: linear-gradient(#ab47bc, #7b1fa2); }
         .c-star { background: linear-gradient(#fff176, #fbc02d); color: #333; }
-        .c-water { background: linear-gradient(#ef5350, #c62828); }
+        .c-wtr { background: linear-gradient(#ef5350, #c62828); }
         .c-bell { background: linear-gradient(#ffca28, #ff6f00); }
-        .c-lemon { background: linear-gradient(#aed581, #558b2f); }
-        .c-orange { background: linear-gradient(#ffa726, #e65100); }
-        .c-apple { background: linear-gradient(#ef5350, #b71c1c); }
-        .c-lucky { background: linear-gradient(135deg, #ff4081, #c51162); border: 2px solid #fff; }
+        .c-lem { background: linear-gradient(#d4e157, #9e9d24); }
+        .c-org { background: linear-gradient(#ffa726, #e65100); }
+        .c-app { background: linear-gradient(#ef5350, #b71c1c); }
 
-        /* 弹窗样式 */
+        /* 操作按钮行 */
+        .action-row { display: flex; gap: 8px; height: 50px; }
+        .act-btn {
+            border: none; border-radius: 8px; color: #fff; font-weight: bold;
+            font-size: 16px; text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
+            box-shadow: 0 4px 0 rgba(0,0,0,0.3); cursor: pointer;
+        }
+        .act-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+
+        .btn-wallet { flex: 1; background: linear-gradient(#42a5f5, #1565c0); }
+        .btn-auto { flex: 1; background: linear-gradient(#ba68c8, #7b1fa2); }
+        .btn-spin {
+            flex: 2; background: linear-gradient(#ffeb3b, #fbc02d);
+            color: #d50000; font-size: 22px; border: 2px solid #fff;
+        }
+
+        /* 遮罩层 */
+        #loader {
+            position: fixed; inset: 0; background: #000; z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            color: #ffeb3b; font-family: 'Orbitron';
+        }
+
+        /* 简单弹窗 */
         .modal-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            z-index: 100; align-items: center; justify-content: center;
         }
-        .modal-content {
-            background: #fff; width: 320px; border-radius: 12px; padding: 0; overflow: hidden;
-            font-family: sans-serif; box-shadow: 0 0 20px rgba(255,255,255,0.2);
-        }
-        .modal-header {
-            background: #eee; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd;
-        }
-        .modal-header h3 { margin: 0; font-size: 16px; color: #333; }
-        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
-
-        .modal-tabs { display: flex; border-bottom: 1px solid #ddd; }
-        .modal-tabs button {
-            flex: 1; padding: 12px; background: #fff; border: none; font-weight: bold; cursor: pointer; color: #777;
-        }
-        .modal-tabs button.active { border-bottom: 3px solid #1976d2; color: #1976d2; }
-
-        .tab-panel { padding: 20px; }
-        .hint { font-size: 12px; color: #666; margin-top: 0; }
-        .input-group { display: flex; gap: 5px; }
-        .input-group input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-
-        .btn-action {
-            background: #1976d2; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;
-        }
-        .btn-red { background: #d32f2f; width: 100%; padding: 12px; }
-
-        .channel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-        .channel-btn {
-            background: #fff; border: 1px solid #ccc; padding: 10px; border-radius: 5px;
-            cursor: pointer; font-size: 13px; color: #333; transition: all 0.2s;
-        }
-        .channel-btn.active {
-            background: #e3f2fd; border-color: #2196f3; color: #1565c0; font-weight: bold;
-            box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
-        }
-
-        /* Loading 遮罩 */
-        #loading-mask {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 10000; display: flex;
-            justify-content: center; align-items: center; color: #fff;
-            font-family: 'Orbitron', sans-serif; font-size: 18px;
+        .modal-box {
+            background: #fff; width: 80%; padding: 20px; border-radius: 10px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-<!-- Loading -->
-<div id="loading-mask">INITIALIZING...</div>
+<!-- 启动加载页 -->
+<div id="loader">SYSTEM INITIALIZING...</div>
 
-<div id="app-scaler">
-    <div class="machine-body">
-        <div class="jackpot-panel">
-            <div class="jackpot-label">GRAND JACKPOT</div>
-            <div class="jackpot-value" id="jackpotDisplay">0.00</div>
+<div id="app-root">
+    <!-- 1. 顶部数显 -->
+    <div class="header-lcd">
+        <div class="lcd-group">
+            <span class="lcd-label">WIN</span>
+            <div class="lcd-screen"><span class="lcd-val val-win" id="win-display">0</span></div>
+        </div>
+        <div class="jackpot-group">
+            <span class="lcd-label" style="color:#ffca28">GRAND JACKPOT</span>
+            <div class="jackpot-val" id="jackpot-display">8,888.88</div>
+        </div>
+        <div class="lcd-group">
+            <span class="lcd-label">CREDIT</span>
+            <div class="lcd-screen"><span class="lcd-val val-credit" id="credit-display">5000</span></div>
+        </div>
+    </div>
+
+    <!-- 2. PIXI 游戏区 -->
+    <div id="game-stage"></div>
+
+    <!-- 3. 底部操作区 -->
+    <div class="control-panel">
+        <!-- 赔率条 -->
+        <div class="odds-strip" id="odds-container">
+            <!-- JS 动态生成 -->
         </div>
 
-        <div class="screen-panel">
-            <div class="lcd-group">
-                <div class="lcd-label">WIN</div>
-                <div class="lcd-display"><div class="lcd-value" id="winDisplay">0</div></div>
-            </div>
-            <div class="lcd-group">
-                <div class="lcd-label">CREDIT</div>
-                <div class="lcd-display"><div class="lcd-value" id="balanceDisplay">---</div></div>
-            </div>
+        <!-- 8个下注按钮 -->
+        <div class="bet-grid" id="bet-container">
+            <!-- JS 动态生成 -->
         </div>
 
-        <div id="game-container"></div>
-
-        <div class="control-panel">
-            <div class="func-buttons">
-                <button class="btn-large btn-blue" onclick="openWallet()">充值</button>
-                <button class="btn-large btn-green" onclick="resetBets()">RESET</button>
-                <button class="btn-large btn-purple" onclick="toggleAuto()">AUTO</button>
-                <button class="btn-large btn-yellow" id="startBtn" onclick="spin()">GO</button>
-            </div>
-
-            <!-- 动态生成的下注按钮 -->
-            <div class="bet-buttons" id="betButtonsContainer"></div>
-
-            <!-- 动态生成的赔率显示 -->
-            <div id="oddsDisplayContainer">Loading Config...</div>
+        <!-- 功能按钮 -->
+        <div class="action-row">
+            <button class="act-btn btn-wallet" onclick="showModal('充值功能暂未开放')">充值</button>
+            <button class="act-btn btn-auto" id="btn-auto" onclick="toggleAuto()">AUTO</button>
+            <button class="act-btn btn-spin" onclick="startGame()">SPIN</button>
         </div>
     </div>
 </div>
 
-<!-- 钱包弹窗 -->
-<div id="walletModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>资金钱包</h3>
-            <button onclick="closeWallet()" class="close-btn">×</button>
-        </div>
-
-        <div class="modal-tabs">
-            <button id="tabDep" class="active" onclick="switchTab('deposit')">充值</button>
-            <button id="tabWdr" onclick="switchTab('withdraw')">提现</button>
-        </div>
-
-        <!-- 充值面板 -->
-        <div id="panelDeposit" class="tab-panel">
-            <p class="hint">请选择支付方式：</p>
-            <div id="channelList" class="channel-grid">
-                <div style="text-align:center; color:#999; font-size:12px;">正在加载通道...</div>
-            </div>
-
-            <div id="depositInputArea" style="display:none; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-                <p class="hint">
-                    当前汇率: <span id="currentRate" style="color:#d32f2f; font-weight:bold;">1.0</span>
-                    (1元 = <span id="rateVal">?</span> 积分)
-                </p>
-                <div class="input-group">
-                    <input type="number" id="depAmount" placeholder="输入充值金额" value="100">
-                    <button class="btn-action" onclick="doDeposit()">立即支付</button>
-                </div>
-                <p class="hint" style="margin-top:5px;">预计到账: <span id="calcPoints" style="color:#2e7d32; font-weight:bold;">0</span> 积分</p>
-            </div>
-
-            <div id="depResult" style="display:none; margin-top:15px; background:#f9f9f9; padding:10px; border-radius:5px; border:1px solid #ddd;"></div>
-        </div>
-
-        <!-- 提现面板 -->
-        <div id="panelWithdraw" class="tab-panel" style="display:none;">
-            <p class="hint">当前余额: <span id="walletBalance">0.00</span></p>
-            <input type="number" id="wdrAmount" placeholder="提现金额" style="width:100%; box-sizing:border-box; margin-bottom:10px; padding:10px;">
-            <input type="text" id="wdrAddress" placeholder="USDT 钱包地址 (TRC20)" style="width:100%; box-sizing:border-box; margin-bottom:10px; padding:10px;">
-            <button class="btn-action btn-red" onclick="doWithdraw()">提交申请</button>
-        </div>
+<!-- 弹窗 -->
+<div id="modal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 id="modal-msg">Message</h3>
+        <button class="act-btn btn-wallet" style="padding:10px 30px;" onclick="closeModal()">确定</button>
     </div>
 </div>
 
 <script>
-    // --- 0. 环境初始化 ---
-    const tg = window.Telegram.WebApp;
-    tg.ready();
-    try {
-        tg.expand();
-        tg.setHeaderColor('#b71c1c');
-    } catch(e){}
+    // === 配置数据 ===
+    // 对应 Image 3 的 8 个下注选项
+    const FRUITS = [
+        { id: 1, name: 'BAR', color: 'c-bar', icon: '💎', odds: 100 },
+        { id: 2, name: '77',  color: 'c-77',  icon: '7️⃣', odds: 40 },
+        { id: 3, name: 'STAR',color: 'c-star',icon: '⭐', odds: 30 },
+        { id: 4, name: 'WTR', color: 'c-wtr', icon: '🍉', odds: 20 },
+        { id: 5, name: 'BELL',color: 'c-bell',icon: '🔔', odds: 20 },
+        { id: 6, name: 'LEM', color: 'c-lem', icon: '🍋', odds: 15 },
+        { id: 7, name: 'ORG', color: 'c-org', icon: '🍊', odds: 10 },
+        { id: 8, name: 'APP', color: 'c-app', icon: '🍎', odds: 5 }
+    ];
 
-    // --- 1. 全局拦截器 (处理 Token 过期) ---
-    axios.interceptors.response.use(response => {
-        return response;
-    }, error => {
-        if (error.response && error.response.status === 401) {
-            console.warn("Token expired or unauthorized");
-            // 可以在这里选择重新触发登录逻辑，或者提示用户
-        }
-        return Promise.reject(error);
-    });
+    // 24格盘面布局 (顺时针: 左上 -> 右上 -> 右下 -> 左下)
+    // 这里的 ID 对应上面 FRUITS 的 ID，9 代表 Luck/Special
+    const LAYOUT = [
+        7, 6, 1, 1, 2, 2, 8, // 上边
+        5, 5,                // 右边
+        5, 6,
+        4, 4,
+        8, 7, 7, 3, 3, 6, 8, // 下边
+        8, 8,                // 左边
+        4, 8
+    ];
 
-    // --- 2. 核心状态 ---
-    let FRUIT_CONFIG = [];
-    let BOARD_LAYOUT = [];
-    let currentBets = {};
+    // === 状态变量 ===
+    let app, boardContainer;
+    let gridSquares = []; // 存储格子的引用
+    let bets = {};
+    let balance = 5000;
     let isSpinning = false;
-    let autoPlay = false;
-    let activeChannel = null;
+    let autoEnabled = false;
+    let currentHighlight = 0;
 
-    // --- 3. 登录逻辑 (增强版) ---
-    async function loginWithTelegram() {
-        let token = localStorage.getItem('game_token');
-        let isSuccess = false;
+    // === 音效 (使用 Howler) ===
+    const sfxClick = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'], volume:0.3 });
+    const sfxSpin  = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3'], loop:true, volume:0.3 });
+    const sfxWin   = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3'] });
 
-        // 优先使用 Telegram 无感登录
-        if (tg.initData) {
-            try {
-                // 后端路由需匹配: Route::post('/auth/telegram', ...)
-                const res = await axios.post('/api/auth/telegram', {
-                    init_data: tg.initData
-                });
-                if (res.data.token) {
-                    token = res.data.token;
-                    localStorage.setItem('game_token', token);
-                    console.log("TG Auto-Login Success:", res.data.user?.name);
-                    isSuccess = true;
-                }
-            } catch (e) {
-                console.error("Auto-Login Failed:", e);
-            }
+    // === 初始化 ===
+    window.onload = function() {
+        initTelegram();
+        initPixi();
+        initUI();
+        document.getElementById('loader').style.display = 'none';
+    };
+
+    function initTelegram() {
+        if(window.Telegram?.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            try { tg.setHeaderColor('#3e2723'); } catch(e){}
         }
-
-        // 如果不在 TG 环境，检查本地是否有旧 Token (游客/测试模式)
-        if (token) {
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            if (!isSuccess && !tg.initData) isSuccess = true; // 本地有 Token 也算一种成功
-        }
-
-        return isSuccess;
     }
 
-    // --- 4. 支付回调监听 (NOWPayments 跳转回来) ---
-    window.addEventListener('load', () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const status = urlParams.get('status');
+    // === 核心逻辑：PixiJS 渲染与自适应 ===
+    function initPixi() {
+        const container = document.getElementById('game-stage');
 
-        if (status === 'success') {
-            window.history.replaceState({}, document.title, window.location.pathname);
-            alert("支付成功！系统确认中，积分稍后到账。");
-            setTimeout(refreshBalance, 3000);
-        } else if (status === 'cancel') {
-            alert("支付流程已取消");
-        }
-    });
+        // 逻辑分辨率：保持正方形设计，480x480
+        const logicSize = 480;
 
-    // --- 5. 游戏启动流程 (串行执行) ---
-    (async function initGame() {
-        try {
-            // A. 等待登录
-            const loginOk = await loginWithTelegram();
-
-            // B. 如果登录彻底失败，停止加载
-            if (!loginOk && !localStorage.getItem('game_token')) {
-                document.getElementById('loading-mask').innerText = "Login Failed / Please open in Telegram";
-                return;
-            }
-
-            // C. 加载配置 (此接口建议在后端设为 public)
-            const res = await axios.get('/api/game/config');
-            const data = res.data.data;
-
-            FRUIT_CONFIG = data.fruits;
-            BOARD_LAYOUT = data.layout;
-
-            // 初始化数据
-            FRUIT_CONFIG.forEach(f => {
-                if(f.id !== 9) currentBets[f.id] = 0;
-            });
-
-            // 渲染
-            initBoard();
-            initBetButtons();
-            initOddsLabels();
-
-            // D. 加载余额 (需要权限)
-            await refreshBalance();
-
-            // E. 移除 Loading
-            document.getElementById('loading-mask').style.display = 'none';
-
-        } catch (e) {
-            console.error(e);
-            document.getElementById('loading-mask').innerText = "Connection Error";
-            document.getElementById('oddsDisplayContainer').innerText = "Config Load Failed";
-        }
-    })();
-
-    // --- 6. 屏幕适配 ---
-    function resizeApp() {
-        const scaler = document.getElementById('app-scaler');
-        const scale = Math.min(window.innerWidth / 500, 1);
-        scaler.style.transform = `scale(${scale})`;
-        document.body.style.height = (scaler.offsetHeight * scale) + 'px';
-    }
-    window.addEventListener('resize', resizeApp);
-    resizeApp();
-
-    // --- 7. 音频引擎 ---
-    const sndClick = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'], volume: 0.5 });
-    const sndSpin  = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3'], loop: true, volume: 0.4 });
-    const sndWin   = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3'], volume: 0.8 });
-    const sndLucky = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3'], volume: 1.0 });
-    const sndStop  = new Howl({ src: ['https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3'], volume: 0.5 });
-
-    // 解决浏览器音频自动播放限制
-    document.body.addEventListener('click', () => { if (Howler.ctx && Howler.ctx.state !== 'running') Howler.ctx.resume(); }, { once: true });
-
-    // --- 8. PixiJS 渲染 ---
-    const app = new PIXI.Application({ width: 470, height: 470, backgroundColor: 0x000000, backgroundAlpha: 0 });
-    document.getElementById('game-container').appendChild(app.view);
-    const squares = [];
-
-    function initBoard() {
-        const centerStyle = new PIXI.TextStyle({
-            fill: ['#d4af37', '#b8860b'], fontSize: 48, fontWeight: 'bold',
-            dropShadow: true, dropShadowColor: '#000000', dropShadowBlur: 4
+        app = new PIXI.Application({
+            width: logicSize, height: logicSize,
+            backgroundAlpha: 0, // 透明背景
+            resolution: window.devicePixelRatio || 1,
+            autoDensity: true
         });
-        const centerText = new PIXI.Text('LUCKY', centerStyle);
-        centerText.anchor.set(0.5); centerText.x = 235; centerText.y = 235;
-        app.stage.addChild(centerText);
+        container.appendChild(app.view);
 
-        const size = 56; const gap = 4; const step = size + gap;
-        const startX = 27; const startY = 27;
+        // 绘制盘面
+        drawBoard(logicSize);
+
+        // --- 关键：强制响应式缩放 ---
+        // 监听窗口大小，动态调整 Canvas 的 style.width/height，使其永远不超出容器
+        function resize() {
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            const ratio = Math.min(w / logicSize, h / logicSize) * 0.96; // 留一点边距
+
+            app.view.style.width = (logicSize * ratio) + 'px';
+            app.view.style.height = (logicSize * ratio) + 'px';
+        }
+        window.addEventListener('resize', resize);
+        resize();
+    }
+
+    function drawBoard(size) {
+        const step = 58; // 格子间距
+        const boxSize = 54;
+        const startX = 35;
+        const startY = 35;
+
+        // 生成坐标 (顺时针)
         const coords = [];
-
+        // Top Row (7 items)
         for(let i=0; i<7; i++) coords.push({x: startX + i*step, y: startY});
+        // Right Col
         for(let i=1; i<=6; i++) coords.push({x: startX + 6*step, y: startY + i*step});
+        // Bottom Row
         for(let i=5; i>=0; i--) coords.push({x: startX + i*step, y: startY + 6*step});
+        // Left Col
         for(let i=5; i>=1; i--) coords.push({x: startX, y: startY + i*step});
 
-        coords.forEach((pos, index) => {
-            const container = new PIXI.Container();
-            container.x = pos.x; container.y = pos.y;
+        // 绘制中心装饰 (LUCKY LOGO)
+        const centerCont = new PIXI.Container();
+        const bg = new PIXI.Graphics();
+        bg.beginFill(0x000000, 0.4);
+        bg.drawRoundedRect(0, 0, 300, 300, 20);
+        bg.endFill();
+        centerCont.addChild(bg);
 
-            const fruitId = BOARD_LAYOUT[index];
-            const config = FRUIT_CONFIG.find(f => f.id === fruitId);
-
-            const bg = new PIXI.Graphics();
-            bg.lineStyle(2, 0x5d4037);
-            if(fruitId === 9) bg.beginFill(0xe91e63);
-            else bg.beginFill(0xffecb3);
-            bg.drawRoundedRect(0, 0, size, size, 8); bg.endFill();
-            container.addChild(bg);
-
-            const textStr = config ? config.name : '?';
-            const text = new PIXI.Text(textStr, {
-                fontSize: fruitId === 9 ? 12 : 14,
-                fill: fruitId === 9 ? '#fff' : '#444',
-                fontWeight: 'bold'
-            });
-            text.anchor.set(0.5); text.position.set(size/2, size/2);
-            container.addChild(text);
-
-            const highlight = new PIXI.Graphics();
-            highlight.lineStyle(4, 0xff0000); highlight.beginFill(0xffeb3b, 0.3);
-            highlight.drawRoundedRect(-2, -2, size+4, size+4, 8); highlight.endFill();
-            highlight.visible = false;
-            container.addChild(highlight);
-
-            squares.push({ highlight: highlight, id: fruitId });
-            app.stage.addChild(container);
+        const style = new PIXI.TextStyle({
+            fontFamily: 'Orbitron', fontSize: 42, fill: ['#ffd700', '#ff6f00'],
+            dropShadow: true, dropShadowColor: '#000000', dropShadowBlur: 6, fontWeight:'bold'
         });
-        updateHighlight(0);
+        const txt = new PIXI.Text('ROYAL\nCASINO', style);
+        txt.anchor.set(0.5); txt.position.set(150, 150);
+        centerCont.addChild(txt);
+
+        centerCont.position.set(startX + step - 10, startY + step - 10);
+        app.stage.addChild(centerCont);
+
+        // 绘制24个格子
+        coords.forEach((pos, idx) => {
+            const g = new PIXI.Container();
+            g.x = pos.x; g.y = pos.y;
+
+            const fid = LAYOUT[idx];
+            const fruit = FRUITS.find(f => f.id === fid) || {icon:'❓', name:'?', color:''};
+
+            // 1. 格子背景
+            const box = new PIXI.Graphics();
+            box.lineStyle(2, 0x4e342e);
+            box.beginFill(0xffecb3);
+            box.drawRoundedRect(0, 0, boxSize, boxSize, 8);
+            box.endFill();
+            g.addChild(box);
+
+            // 2. 图标 (这里用 Text 模拟图标，实际可用 Sprite)
+            const iconTxt = new PIXI.Text(fruit.icon, {fontSize: 26});
+            iconTxt.anchor.set(0.5);
+            iconTxt.position.set(boxSize/2, boxSize/2 - 5);
+            g.addChild(iconTxt);
+
+            const nameTxt = new PIXI.Text(fruit.name, {fontSize: 10, fontWeight:'bold', fill:'#333'});
+            nameTxt.anchor.set(0.5);
+            nameTxt.position.set(boxSize/2, boxSize - 10);
+            g.addChild(nameTxt);
+
+            // 3. 高亮框 (默认隐藏)
+            const hl = new PIXI.Graphics();
+            hl.lineStyle(4, 0xff0000);
+            hl.beginFill(0xffff00, 0.3);
+            hl.drawRoundedRect(-2, -2, boxSize+4, boxSize+4, 10);
+            hl.endFill();
+            hl.visible = false;
+            g.addChild(hl);
+
+            gridSquares.push({ el: g, hl: hl, id: fid });
+            app.stage.addChild(g);
+        });
+
+        gridSquares[0].hl.visible = true; // 默认高亮第一个
     }
 
-    function initBetButtons() {
-        const container = document.getElementById('betButtonsContainer');
-        container.innerHTML = '';
-        const bettable = FRUIT_CONFIG.filter(f => f.id !== 9);
-        bettable.forEach(fruit => {
-            const unit = document.createElement('div');
-            unit.className = 'bet-unit';
-            const lcd = document.createElement('div');
-            lcd.className = 'bet-lcd';
-            lcd.id = `bet-val-${fruit.id}`;
-            lcd.innerText = '0';
-            const btn = document.createElement('button');
-            btn.className = `btn-fruit ${fruit.color}`;
-            btn.innerText = fruit.name;
-            btn.onclick = () => { tgTrigger('light'); addBet(fruit.id); };
-            unit.appendChild(lcd); unit.appendChild(btn);
-            container.appendChild(unit);
+    // === UI 生成 ===
+    function initUI() {
+        const oddBox = document.getElementById('odds-container');
+        const betBox = document.getElementById('bet-container');
+
+        FRUITS.forEach(f => {
+            bets[f.id] = 0;
+
+            // 1. 赔率条
+            const tag = document.createElement('span');
+            tag.className = 'odds-tag';
+            tag.innerText = `${f.name} x${f.odds}`;
+            oddBox.appendChild(tag);
+
+            // 2. 下注按钮
+            const div = document.createElement('div');
+            div.className = 'bet-unit';
+            div.innerHTML = `
+                <div class="bet-lcd" id="bet-val-${f.id}">0</div>
+                <button class="btn-fruit ${f.color}" onclick="addBet(${f.id})">
+                    ${f.icon}
+                </button>
+            `;
+            betBox.appendChild(div);
         });
+        updateBalanceDisplay();
     }
 
-    function initOddsLabels() {
-        const container = document.getElementById('oddsDisplayContainer');
-        container.innerHTML = '';
-        const bettable = FRUIT_CONFIG.filter(f => f.id !== 9);
-        bettable.forEach(fruit => {
-            const span = document.createElement('span');
-            span.innerText = `x${fruit.multiplier}`;
-            container.appendChild(span);
-        });
-    }
-
+    // === 游戏逻辑 ===
     function addBet(id) {
         if(isSpinning) return;
-        sndClick.play();
-        currentBets[id] += 10;
-        document.getElementById(`bet-val-${id}`).innerText = currentBets[id];
+        if(balance < 10) return showModal("余额不足！");
+
+        sfxClick.play();
+        bets[id] += 10;
+        balance -= 10;
+
+        document.getElementById(`bet-val-${id}`).innerText = bets[id];
+        updateBalanceDisplay();
+        haptic('light');
     }
 
-    function resetBets() {
-        if(isSpinning) return;
-        sndClick.play(); tgTrigger('medium');
-        for(let id in currentBets) {
-            currentBets[id] = 0;
-            const el = document.getElementById(`bet-val-${id}`);
-            if(el) el.innerText = 0;
-        }
+    function updateBalanceDisplay() {
+        document.getElementById('credit-display').innerText = balance;
     }
 
     function toggleAuto() {
-        autoPlay = !autoPlay;
-        tgNotify(autoPlay ? 'success' : 'warning');
-        alert(autoPlay ? 'Auto ON' : 'Auto OFF');
+        autoEnabled = !autoEnabled;
+        const btn = document.getElementById('btn-auto');
+        btn.style.filter = autoEnabled ? 'brightness(1.5)' : 'none';
+        btn.innerText = autoEnabled ? 'ON' : 'AUTO';
+        haptic('medium');
     }
 
-    async function refreshBalance() {
-        try {
-            const res = await axios.get('/api/game/balance');
-            const data = res.data.data;
-            document.getElementById('balanceDisplay').innerText = String(data.balance).padStart(8, '0');
-            document.getElementById('jackpotDisplay').innerText = parseFloat(data.jackpot).toFixed(2);
-        } catch(e) {
-            // 如果获取余额失败（如 Token 失效），显示 ---
-            document.getElementById('balanceDisplay').innerText = "---";
-        }
-    }
+    function startGame() {
+        if(isSpinning) return;
+        const totalBet = Object.values(bets).reduce((a,b)=>a+b, 0);
+        if(totalBet === 0) return showModal("请先下注！");
 
-    function updateHighlight(idx) {
-        squares.forEach(s => s.highlight.visible = false);
-        if(squares[idx]) squares[idx].highlight.visible = true;
-    }
+        isSpinning = true;
+        sfxSpin.play();
+        document.getElementById('win-display').innerText = '0';
+        haptic('heavy');
 
-    function runToStop(targetIndex, speedMult = 1) {
-        return new Promise(resolve => {
-            let currentIdx = squares.findIndex(s => s.highlight.visible);
-            if(currentIdx < 0) currentIdx = 0;
-            let rounds = 0;
-            const minRounds = 2;
-            const baseTime = 50 / speedMult;
-            const timer = setInterval(() => {
-                currentIdx++;
-                if(currentIdx >= 24) { currentIdx = 0; rounds++; }
-                updateHighlight(currentIdx);
-                if(rounds >= minRounds && currentIdx === targetIndex) {
-                    clearInterval(timer);
-                    resolve();
+        // 模拟后端结果 (随机)
+        const targetIdx = Math.floor(Math.random() * 24);
+        const winId = LAYOUT[targetIdx];
+
+        runAnimation(targetIdx, () => {
+            sfxSpin.stop();
+            isSpinning = false;
+
+            // 结算逻辑
+            const betAmt = bets[winId] || 0;
+            const fruit = FRUITS.find(f=>f.id === winId);
+            const winAmt = betAmt * (fruit ? fruit.odds : 0);
+
+            if(winAmt > 0) {
+                sfxWin.play();
+                balance += winAmt;
+                updateBalanceDisplay();
+                document.getElementById('win-display').innerText = winAmt;
+                haptic('success');
+                blinkHighlight(targetIdx);
+            }
+
+            // 自动开始逻辑
+            if(autoEnabled) {
+                if(balance >= totalBet) {
+                    // 扣除下注额
+                    FRUITS.forEach(f => {
+                        if(bets[f.id] > 0) balance -= bets[f.id];
+                    });
+                    updateBalanceDisplay();
+                    setTimeout(startGame, 1500);
+                } else {
+                    autoEnabled = false;
+                    toggleAuto(); // UI Update
+                    showModal("余额不足以自动续投");
                 }
-            }, baseTime);
+            }
         });
     }
 
-    async function spin() {
-        const totalBet = Object.values(currentBets).reduce((a,b)=>a+b, 0);
-        if (totalBet === 0) return alert("请先下注");
-        isSpinning = true;
-        tgTrigger('heavy');
-        document.getElementById('winDisplay').innerText = "0";
-        sndWin.stop(); sndSpin.play();
+    function runAnimation(targetIndex, callback) {
+        let rounds = 0;
+        const minRounds = 3;
+        let speed = 50;
 
-        try {
-            const res = await axios.post('/api/game/spin', { bets: currentBets });
-            const data = res.data.data;
-            const stops = data.stops || [data.stop_index];
-
-            for(let i=0; i<stops.length; i++) {
-                const target = stops[i];
-                const isFinal = (i === stops.length - 1);
-                const speed = (i > 0) ? 2.5 : 1.0;
-                await runToStop(target, speed);
-                if (!isFinal) {
-                    sndSpin.pause(); sndLucky.play(); tgNotify('success');
-                    const blinkTimer = setInterval(() => {
-                        squares[target].highlight.visible = !squares[target].highlight.visible;
-                    }, 100);
-                    await new Promise(r => setTimeout(r, 1500));
-                    clearInterval(blinkTimer);
-                    sndSpin.play();
-                }
+        function step() {
+            // 移动高亮
+            gridSquares[currentHighlight].hl.visible = false;
+            currentHighlight++;
+            if(currentHighlight >= 24) {
+                currentHighlight = 0;
+                rounds++;
             }
+            gridSquares[currentHighlight].hl.visible = true;
 
-            isSpinning = false; sndSpin.stop();
-            document.getElementById('balanceDisplay').innerText = String(data.balance).padStart(8, '0');
-            document.getElementById('winDisplay').innerText = data.win_amount;
-            if(data.jackpot) document.getElementById('jackpotDisplay').innerText = parseFloat(data.jackpot).toFixed(2);
-
-            if(data.win_amount > 0) {
-                sndWin.play(); tgNotify('success');
-                let b = 0;
-                let t = setInterval(()=>{
-                    document.getElementById('winDisplay').style.color = b++%2?'#fff':'#ff5252';
-                    if(b>10) clearInterval(t);
-                }, 100);
+            // 停止条件
+            if(rounds >= minRounds && currentHighlight === targetIndex) {
+                callback();
             } else {
-                sndStop.play(); tgTrigger('light');
-            }
-
-            if(autoPlay && data.balance >= totalBet) {
-                setTimeout(spin, 1500);
-            } else if (autoPlay) {
-                autoPlay = false; alert("余额不足，自动停止");
-            }
-
-        } catch (err) {
-            isSpinning = false; sndSpin.stop();
-            console.error(err);
-            alert("Error: " + (err.response?.data?.message || "网络错误"));
-        }
-    }
-
-    function tgTrigger(style) { if(window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred(style); }
-    function tgNotify(type) { if(window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred(type); }
-
-    // --- 9. 钱包逻辑 ---
-
-    async function openWallet() {
-        refreshBalance();
-        document.getElementById('walletBalance').innerText = document.getElementById('balanceDisplay').innerText;
-        document.getElementById('walletModal').style.display = 'flex';
-        await loadChannels();
-    }
-
-    function closeWallet() {
-        document.getElementById('walletModal').style.display = 'none';
-        document.getElementById('depResult').style.display = 'none';
-    }
-
-    function switchTab(type) {
-        document.getElementById('tabDep').className = type === 'deposit' ? 'active' : '';
-        document.getElementById('tabWdr').className = type === 'withdraw' ? 'active' : '';
-        document.getElementById('panelDeposit').style.display = type === 'deposit' ? 'block' : 'none';
-        document.getElementById('panelWithdraw').style.display = type === 'withdraw' ? 'block' : 'none';
-    }
-
-    async function loadChannels() {
-        const container = document.getElementById('channelList');
-        try {
-            const res = await axios.get('/api/deposit/channels');
-            const channels = res.data.data;
-            container.innerHTML = '';
-            if(channels.length === 0) {
-                container.innerHTML = '<p class="hint">暂无可用支付通道</p>';
-                return;
-            }
-            channels.forEach(ch => {
-                const btn = document.createElement('button');
-                btn.className = 'channel-btn';
-                btn.innerHTML = `${ch.name}`;
-                btn.onclick = () => selectChannel(ch, btn);
-                container.appendChild(btn);
-            });
-        } catch (e) {
-            container.innerHTML = '<p class="hint" style="color:red">加载失败</p>';
-        }
-    }
-
-    function selectChannel(channel, btnElement) {
-        activeChannel = channel;
-        document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
-        btnElement.classList.add('active');
-        document.getElementById('depositInputArea').style.display = 'block';
-        document.getElementById('currentRate').innerText = channel.exchange_rate;
-        document.getElementById('rateVal').innerText = channel.exchange_rate;
-        document.getElementById('depResult').style.display = 'none';
-        calcPreview();
-    }
-
-    document.getElementById('depAmount').addEventListener('input', calcPreview);
-
-    function calcPreview() {
-        if(!activeChannel) return;
-        const val = parseFloat(document.getElementById('depAmount').value) || 0;
-        const points = val * parseFloat(activeChannel.exchange_rate);
-        document.getElementById('calcPoints').innerText = points.toFixed(0);
-    }
-
-    // ★★★ 核心修复：充值逻辑 ★★★
-    async function doDeposit() {
-        if (!activeChannel) return alert("请选择支付方式");
-        const amount = document.getElementById('depAmount').value;
-        if (!amount || amount < 1) return alert("请输入金额");
-
-        const btn = document.querySelector('#depositInputArea button');
-        btn.disabled = true; btn.innerText = "处理中...";
-
-        try {
-            const res = await axios.post('/api/deposit', {
-                amount: amount,
-                method: activeChannel.slug
-            });
-
-            const data = res.data.data;
-            const resultArea = document.getElementById('depResult');
-            resultArea.style.display = 'block';
-            resultArea.innerHTML = ""; // 清空旧内容
-
-            // A. Stars 支付 (兼容安卓)
-            if (data.type === 'stars') {
-                resultArea.innerHTML = `<p style="text-align:center">正在拉起 Telegram 支付...</p>`;
-
-                let invoiceInput = data.url;
-                // 提取 slug
-                if (invoiceInput.includes('t.me/')) {
-                    invoiceInput = invoiceInput.split('t.me/')[1];
-                }
-
-                tg.openInvoice(invoiceInput, function(status) {
-                    if (status === 'paid') {
-                        tg.close();
-                        closeWallet();
-                        alert("充值成功！");
-                        refreshBalance();
-                    } else if (status === 'cancelled') {
-                        console.log("支付取消");
-                    } else {
-                        resultArea.innerHTML = `<p style="color:red;text-align:center">状态: ${status}</p>`;
-                    }
-                });
-            }
-            // B. URL 跳转 (USDT / NOWPayments)
-            else if (data.type === 'url') {
-                resultArea.innerHTML = `<p style="text-align:center">正在跳转...</p>`;
-
-                if (window.Telegram?.WebApp) {
-                    tg.openLink(data.url);
+                // 简单的变速逻辑
+                if(rounds < minRounds - 1) {
+                    // 加速
+                    if(speed > 30) speed -= 2;
                 } else {
-                    window.location.href = data.url;
+                    // 减速
+                    speed += 10;
                 }
-                alert("请在浏览器完成支付后返回");
-                closeWallet();
+                setTimeout(step, speed);
             }
-            // C. 手动转账 (已移除模拟测试按钮)
-            else if (data.type === 'manual') {
-                resultArea.innerHTML = `
-                    <p style="font-size:12px; color:#555;">请转账 <b>${data.amount}</b> 至：</p>
-                    <div style="background:#fff; padding:5px; border:1px dashed #ccc; margin:5px 0;">
-                        <div style="word-break:break-all; color:#d32f2f; font-weight:bold; font-size:13px;">${data.address}</div>
-                    </div>
-                    <p style="font-size:10px; color:#999;">订单号: ${data.order_no}</p>
-                    <button onclick="closeWallet()" style="width:100%; margin-top:5px;">我已转账</button>
-                `;
-            }
-
-        } catch (e) {
-            alert("错误: " + (e.response?.data?.message || e.message));
-        } finally {
-            btn.disabled = false; btn.innerText = "立即支付";
         }
+        step();
     }
 
-    async function doWithdraw() {
-        const amount = document.getElementById('wdrAmount').value;
-        const address = document.getElementById('wdrAddress').value;
-        if(!amount || amount < 10) return alert("最小提现 10 元");
-        if(!address || address.length < 5) return alert("请输入正确地址");
-        try {
-            const res = await axios.post('/api/withdraw', { amount: amount, address: address });
-            alert(res.data.message);
-            refreshBalance();
-            closeWallet();
-        } catch (e) {
-            alert("错误: " + (e.response?.data?.message || e.message));
+    function blinkHighlight(idx) {
+        let count = 0;
+        const interval = setInterval(() => {
+            gridSquares[idx].hl.visible = !gridSquares[idx].hl.visible;
+            count++;
+            if(count > 8) {
+                clearInterval(interval);
+                gridSquares[idx].hl.visible = true;
+            }
+        }, 100);
+    }
+
+    // === 辅助 ===
+    function showModal(msg) {
+        document.getElementById('modal-msg').innerText = msg;
+        document.getElementById('modal').style.display = 'flex';
+    }
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+    }
+    function haptic(style) {
+        if(window.Telegram?.WebApp?.HapticFeedback) {
+            if(style==='success') window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            else window.Telegram.WebApp.HapticFeedback.impactOccurred(style);
         }
     }
 </script>
