@@ -2,393 +2,709 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Royal Fruit - Final Stable</title>
-
-    <!-- 换用更快的 CDN -->
-    <script src="https://lib.baomitu.com/axios/1.6.0/axios.min.js"></script>
-    <script src="https://lib.baomitu.com/pixi.js/7.3.2/pixi.min.js"></script>
-    <script src="https://lib.baomitu.com/howler/2.2.4/howler.min.js"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Super Fruit Machine 3D</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto+Condensed:wght@700&display=swap');
+        :root {
+            --primary-red: #d32f2f;
+            --primary-blue: #0277bd;
+            --led-bg: #000;
+            --led-red: #ff3333;
+            --led-green: #76ff03;
+            --glass-sheen: rgba(255,255,255,0.3);
+            --shadow-depth: 4px;
+        }
 
-        :root { --body-bg: #000; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 
-        body, html {
-            margin: 0; padding: 0; background-color: var(--body-bg);
-            height: 100%; width: 100%; overflow: hidden;
-            position: fixed; font-family: 'Roboto Condensed', sans-serif;
-        }
-
-        #loading-mask {
-            position: fixed; inset: 0; background: #000; z-index: 9999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            color: #ffd700; font-family: 'Orbitron'; font-size: 20px;
-            transition: opacity 0.5s;
-        }
-        #loading-status { margin-top: 10px; font-size: 12px; color: #666; font-family: sans-serif; }
-
-        #app-root {
-            width: 100%; height: 100%; max-width: 550px; margin: 0 auto;
-            background: linear-gradient(180deg, #b71c1c 0%, #880e4f 5%, #0277bd 15%, #01579b 100%);
-            display: flex; flex-direction: column;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-        }
-
-        /* 1. Header */
-        .top-hood {
-            flex: 0 0 auto; height: 60px;
-            background: radial-gradient(circle at 50% 100%, #ff5252, #b71c1c);
-            border-bottom: 4px solid #ffd700;
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 2px 10px; padding-top: max(5px, env(safe-area-inset-top));
-            z-index: 20; position: relative; box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-        }
-        .bulb-deco { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 60%; display: flex; justify-content: space-between; pointer-events: none; }
-        .bulb { width: 6px; height: 6px; background: #fff; border-radius: 50%; box-shadow: 0 0 8px #fff; }
-
-        .lcd-group { text-align: center; }
-        .lcd-label { color: #29b6f6; font-size: 9px; font-weight: bold; margin-bottom: 1px; }
-        .lcd-frame { background: #000; padding: 2px; border-radius: 6px; border-bottom: 1px solid #444; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-        .lcd-screen { background: radial-gradient(#222, #000); border: 1px solid #333; border-radius: 4px; padding: 0 6px; min-width: 80px; }
-        .lcd-digit { font-family: 'Orbitron', monospace; font-size: 16px; color: #ff1744; text-shadow: 0 0 8px #d50000; letter-spacing: 1px; }
-        #balanceDisplay { color: #fff; text-shadow:none; }
-
-        /* 2. Game Area */
-        #game-wrapper {
-            flex: 1 1 auto; min-height: 0; width: 100%;
-            background: #fdf5e6;
-            border-left: 2px solid #0d47a1; border-right: 2px solid #0d47a1;
-            display: flex; justify-content: center; align-items: center;
+        body {
+            margin: 0; padding: 0;
+            background: #111;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
             overflow: hidden;
+        }
+
+        /* === 游戏机外壳 === */
+        #app-root {
+            width: 100%;
+            max-width: 450px;
+            background: linear-gradient(180deg, #b71c1c 0%, #880e4f 100%);
+            border-radius: 20px;
+            padding: 10px;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
+            position: relative;
+            border: 2px solid #555;
+        }
+
+        /* === 顶部栏 === */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px 10px 0 0;
+            margin-bottom: 5px;
+        }
+        .status-badge { color: gold; font-weight: bold; text-shadow: 0 0 5px gold; font-size: 14px; }
+        .icon-btn { font-size: 18px; cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); }
+
+        /* === 数码显示区 === */
+        .score-board {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+            background: #01579b;
+            padding: 5px;
+            border-radius: 8px;
+            border: 2px solid #4fc3f7;
+        }
+        .lcd-panel {
+            flex: 1;
+            background: #000;
+            border-radius: 4px;
+            padding: 4px;
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .lcd-panel::after { /* 玻璃反光 */
+            content: ''; position: absolute; top:0; left:0; width:100%; height:50%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
+            pointer-events: none;
+        }
+        .lcd-label { color: #4fc3f7; font-size: 9px; text-align: center; margin-bottom: 2px; letter-spacing: 1px; }
+        .lcd-value {
+            color: var(--led-red);
+            font-family: 'Courier New', monospace;
+            font-size: 22px;
+            text-align: center;
+            font-weight: bold;
+            text-shadow: 0 0 8px var(--led-red);
+            letter-spacing: 2px;
+        }
+
+        /* === 主游戏盘面 (Grid) === */
+        .game-board {
+            background: #002f6c;
+            padding: 8px;
+            border-radius: 8px;
+            border: 2px solid #4fc3f7;
+            position: relative;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+            gap: 4px;
+            aspect-ratio: 1/1.05;
+        }
+
+        /* 格子样式 */
+        .cell {
+            background: #fff8e1;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.3), 0 2px 2px rgba(0,0,0,0.3);
+            position: relative;
+            transition: transform 0.1s;
+        }
+        .cell .icon { font-size: 22px; z-index: 2; }
+        .cell .multi { font-size: 9px; font-weight: 800; color: #333; margin-top: -2px; z-index: 2; }
+
+        /* 跑灯激活状态 */
+        .cell.active {
+            background: #fff !important;
+            box-shadow: 0 0 15px gold, inset 0 0 10px #ffeb3b;
+            z-index: 10;
+            transform: scale(1.1);
+            border: 2px solid red;
+        }
+        /* 中奖状态 */
+        .cell.winner {
+            animation: blinkWinner 0.5s infinite alternate;
+        }
+
+        /* 特殊颜色格子 */
+        .cell.type-apple { background: #ffebee; }
+        .cell.type-bar { background: #e0f7fa; }
+        .cell.type-orange { background: #fff3e0; }
+
+        /* === 中心大图区域 === */
+        .center-stage {
+            grid-column: 2 / 6;
+            grid-row: 2 / 6;
+            background: radial-gradient(circle, #800000 30%, #3e2723 100%);
+            border-radius: 10px;
+            border: 2px solid gold;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            padding-bottom: 10px;
+            box-shadow: inset 0 0 20px #000;
+        }
+
+        .god-image {
+            position: absolute;
+            top: 10px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 80px;
+            text-shadow: 0 0 20px gold;
+            animation: floatGod 3s ease-in-out infinite;
+        }
+
+        .center-hud {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid #4fc3f7;
+            z-index: 5;
+            margin-bottom: 50px;
+        }
+        .hud-btn { width: 24px; height: 24px; border-radius: 50%; background: #039be5; color: white; border: none; font-weight: bold; box-shadow: 0 2px 0 #01579b; }
+        .hud-btn:active { transform: translateY(2px); box-shadow: none; }
+
+        .countdown-led {
+            position: absolute;
+            bottom: 15px;
+            background: #000;
+            color: var(--led-red);
+            padding: 2px 12px;
+            border: 2px solid #333;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 18px;
+            box-shadow: 0 0 5px var(--led-red);
+        }
+
+        /* === 控制台按钮 === */
+        .control-panel {
+            background: #0277bd;
+            padding: 8px;
+            display: flex;
+            gap: 6px;
+            border-top: 3px solid #4fc3f7;
+            border-bottom: 3px solid #01579b;
+        }
+
+        .btn-3d {
+            border: none;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.1s;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 var(--shadow-depth) 0 rgba(0,0,0,0.4), 0 calc(var(--shadow-depth) + 2px) 5px rgba(0,0,0,0.3);
+        }
+        .btn-3d:active {
+            transform: translateY(var(--shadow-depth));
+            box-shadow: 0 0 0 rgba(0,0,0,0.4);
+        }
+        .btn-3d:disabled { filter: grayscale(0.8); cursor: not-allowed; }
+
+        .btn-rect { flex: 1; height: 35px; border-radius: 6px; font-size: 12px; }
+        .btn-circle { width: 45px; height: 45px; border-radius: 50%; font-size: 10px; line-height: 1.1; }
+        .btn-go {
+            flex: 2;
+            background: linear-gradient(#ffeb3b, #fbc02d);
+            color: #b71c1c;
+            font-size: 20px;
+            border-radius: 8px;
+            height: 45px;
+            box-shadow: 0 5px 0 #f57f17, 0 8px 5px rgba(0,0,0,0.3);
+        }
+        .btn-go:active { box-shadow: 0 0 0 #f57f17; }
+
+        .bg-green { background: linear-gradient(#76ff03, #33691e); }
+        .bg-blue { background: linear-gradient(#29b6f6, #01579b); }
+        .bg-purple { background: linear-gradient(#ab47bc, #4a148c); }
+
+        /* === 押注区 === */
+        .bet-row {
+            display: flex;
+            background: #002d52;
+            padding: 5px 2px;
+            gap: 2px;
+        }
+        .bet-cell {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .odds-tag { font-size: 10px; text-align: center; color: #000; padding: 1px; font-weight: bold; border-radius: 2px; }
+        .led-small {
+            background: #000; color: var(--led-green);
+            font-family: monospace; font-size: 11px; text-align: center;
+            border: 1px solid #333; height: 16px; line-height: 14px;
+        }
+
+        /* === 底部水果按钮 === */
+        .footer-btns {
+            display: flex;
+            justify-content: space-between;
             padding: 10px 5px;
+            background: #0277bd;
+            border-radius: 0 0 20px 20px;
         }
-        #game-wrapper canvas { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+        .fruit-btn-wrap {
+            position: relative;
+            width: 11.5%;
+            padding-bottom: 11.5%; /* Square aspect ratio */
+            height: 0;
+        }
+        .fruit-btn {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #a5d6a7, #1b5e20);
+            border: 2px solid #1b5e20;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: transform 0.05s;
+        }
+        .fruit-btn:active { transform: scale(0.9); background: radial-gradient(circle at 30% 30%, #81c784, #1b5e20); }
 
-        /* 3. Control Deck */
-        .control-deck {
-            flex: 0 0 auto;
-            background: linear-gradient(180deg, #42a5f5 0%, #1565c0 40%, #0d47a1 100%);
-            border-top: 4px solid #ffd700;
-            padding: 5px; padding-bottom: calc(8px + env(safe-area-inset-bottom));
-            display: flex; flex-direction: column; gap: 5px;
-            position: relative; z-index: 10; width: 100%;
+        /* 动画关键帧 */
+        @keyframes blinkWinner {
+            0% { background: #fff; box-shadow: 0 0 10px red; }
+            100% { background: gold; box-shadow: 0 0 30px gold; }
+        }
+        @keyframes floatGod {
+            0%, 100% { transform: translate(-50%, 0); }
+            50% { transform: translate(-50%, -10px); }
         }
 
-        .func-row {
-            display: flex; gap: 4px; justify-content: space-between; align-items: stretch;
-            padding: 3px; background: rgba(0,0,0,0.2); border-radius: 10px;
-            height: 11vw; max-height: 50px; min-height: 38px;
+        /* 颜色辅助类 */
+        .tag-red { background: #ef5350; color: white; }
+        .tag-orange { background: #ffa726; }
+        .tag-blue { background: #42a5f5; color: white; }
+        .tag-grey { background: #bdbdbd; }
+
+        /* Toast 提示 */
+        #toast {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px;
+            pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 100;
+            font-weight: bold; border: 1px solid gold;
         }
-
-        .btn-3d { border: none; position: relative; cursor: pointer; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; flex: 1; min-width: 0; padding: 0; }
-        .btn-3d:active { transform: translateY(2px); box-shadow: none !important; border-bottom: none !important; margin-top: 2px; }
-
-        .b-round-green { aspect-ratio: 1/1; flex: 0 0 auto; height: 100%; width: auto; border-radius: 50%; background: linear-gradient(180deg, #76ff03 0%, #33691e 100%); box-shadow: 0 3px 0 #1b5e20, 0 4px 4px rgba(0,0,0,0.3); border: 2px solid #b2ff59; font-size: 10px; flex-direction: column; line-height: 1.1; }
-        .grp-blue { flex: 1.5; display: flex; gap: 2px; }
-        .grp-purp { flex: 2; display: flex; gap: 2px; }
-        .b-sq { width: 100%; height: 100%; border-radius: 8px; font-size: 12px; box-shadow: 0 4px 0 rgba(0,0,0,0.4); border-top: 1px solid rgba(255,255,255,0.4); }
-        .b-go { flex: 1.2; border-radius: 10px; height: 100%; background: linear-gradient(180deg, #ffeb3b 0%, #ff6f00 100%); box-shadow: 0 4px 0 #e65100; border: 2px solid #fff; color: #b71c1c; font-family: 'Orbitron'; font-size: clamp(16px, 5vw, 24px); }
-
-        .bet-panel { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; background: #0d47a1; padding: 3px; border-radius: 8px; width: 100%; }
-        .bet-col { display: flex; flex-direction: column; align-items: center; gap: 1px; width: 100%; overflow: hidden; }
-
-        .odds-glass { width: 100%; height: 20px; font-size: clamp(8px, 2.5vw, 12px); font-weight: 900; color: #fff; display: flex; align-items: center; justify-content: center; text-shadow: 0 1px 1px #000; border: 1px solid rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.6); }
-        .led-window { width: 100%; height: 18px; background: #000; border: 1px solid #555; color: #ff1744; font-family: 'Orbitron'; font-size: clamp(9px, 3vw, 14px); display: flex; align-items: center; justify-content: center; }
-        .push-btn { width: 100%; aspect-ratio: 1 / 1; border-radius: 50%; border: none; position: relative; cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; border-top: 1px solid rgba(255,255,255,0.5); }
-        .push-btn span { font-size: clamp(14px, 4vw, 22px); text-shadow: 1px 1px 2px #000; }
-        .push-btn:active { transform: translateY(2px); box-shadow: none; }
-
-        .b-blue { background: linear-gradient(180deg, #29b6f6 0%, #01579b 100%); font-size: 16px; }
-        .b-purp { background: linear-gradient(180deg, #ab47bc 0%, #4a148c 100%); }
-        .bg-blue { background: linear-gradient(180deg, #42a5f5 0%, #1565c0 100%); }
-        .bg-red { background: linear-gradient(180deg, #ef5350 0%, #b71c1c 100%); }
-        .bg-grey { background: linear-gradient(180deg, #90a4ae 0%, #455a64 100%); }
-        .pb-green { background: linear-gradient(180deg, #76ff03 0%, #33691e 100%); }
-        .pb-purp { background: linear-gradient(180deg, #e040fb 0%, #7b1fa2 100%); }
-        .pb-red { background: linear-gradient(180deg, #ff5252 0%, #b71c1c 100%); }
-
-        #msg-toast { position:absolute; bottom: 20%; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px; display:none; z-index:100; pointer-events:none; white-space: nowrap; }
-        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; justify-content:center; align-items:center; }
-        .modal-body { background: #fff; width: 300px; padding: 20px; border-radius: 10px; font-family: sans-serif; }
     </style>
 </head>
 <body>
 
-<div id="loading-mask">
-    <div>INITIALIZING...</div>
-    <div id="loading-status">Checking Resources...</div>
-</div>
-<div id="msg-toast"></div>
-
 <div id="app-root">
-    <div class="top-hood">
-        <div class="bulb-deco"><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div></div>
-        <div class="lcd-group">
-            <div class="lcd-label">WIN / JP</div>
-            <div class="lcd-frame"><div class="lcd-screen"><div id="winDisplay" class="lcd-digit">0</div></div></div>
+    <div id="toast"></div>
+
+    <!-- 顶部 -->
+    <header class="header">
+        <div class="icon-btn">⚙️</div>
+        <div class="status-badge">💰 JACKPOT</div>
+        <div class="icon-btn">🛒</div>
+    </header>
+
+    <!-- 显示屏 -->
+    <div class="score-board">
+        <div class="lcd-panel">
+            <div class="lcd-label">WIN SCORE</div>
+            <div class="lcd-value" id="win-display">0</div>
         </div>
-        <div class="lcd-group">
+        <div class="lcd-panel">
             <div class="lcd-label">CREDIT</div>
-            <div class="lcd-frame"><div class="lcd-screen"><div id="balanceDisplay" class="lcd-digit" style="color:#fff">---</div></div></div>
+            <div class="lcd-value" id="credit-display">5000</div>
         </div>
     </div>
 
-    <div id="game-wrapper"></div>
-
-    <div class="control-deck">
-        <div class="func-row">
-            <button class="btn-3d b-round-green" onclick="openWallet()">$<br>ADD</button>
-            <div class="grp-blue">
-                <button class="btn-3d b-sq b-blue">⬅</button>
-                <button class="btn-3d b-sq b-blue">➡</button>
-            </div>
-            <div class="grp-purp">
-                <button class="btn-3d b-sq b-purp btn-auto" onclick="toggleAuto()">AUTO</button>
-                <button class="btn-3d b-sq b-purp">8-13</button>
-            </div>
-            <button class="btn-3d b-go" id="startBtn" onclick="spin()">GO</button>
+    <!-- 游戏主板 -->
+    <div class="game-board">
+        <div class="grid-container" id="grid-box">
+            <!-- 动态生成格子 -->
         </div>
-        <div class="bet-panel" id="betButtonsContainer"></div>
     </div>
-</div>
 
-<!-- Wallet Modal -->
-<div id="walletModal" class="modal-overlay">
-    <div class="modal-body">
-        <h3>钱包</h3>
-        <p>充值通道加载中...</p>
-        <button onclick="document.getElementById('walletModal').style.display='none'" style="margin-top:10px;padding:8px;width:100%">关闭</button>
+    <!-- 控制按钮 -->
+    <div class="control-panel">
+        <button class="btn-3d btn-circle bg-green" onclick="game.autoBet()">ALL<br>+/</button>
+        <button class="btn-3d btn-rect bg-blue">⬅️</button>
+        <button class="btn-3d btn-rect bg-blue">➡️</button>
+        <button class="btn-3d btn-rect bg-purple">1-6</button>
+        <button class="btn-3d btn-rect bg-purple">8-13</button>
+        <button class="btn-3d btn-go" id="start-btn" onclick="game.spin()">GO</button>
+    </div>
+
+    <!-- 赔率/押注显示 -->
+    <div class="bet-row" id="odds-row">
+        <!-- 动态生成 -->
+    </div>
+
+    <!-- 底部按钮 -->
+    <div class="footer-btns" id="bet-btns">
+        <!-- 动态生成 -->
     </div>
 </div>
 
 <script>
-    // === 保险丝：3秒后强制进入游戏，不再等待 API ===
-    const loader = document.getElementById('loading-mask');
-    const status = document.getElementById('loading-status');
+    // === 游戏配置 ===
+    const ITEMS = [
+        { id: 0, name: 'BAR', icon: '💎', odds: 100, color: 'tag-blue' },
+        { id: 1, name: '77',  icon: '7️⃣', odds: 40,  color: 'tag-red' },
+        { id: 2, name: 'STR', icon: '⭐', odds: 30,  color: 'tag-grey' },
+        { id: 3, name: 'WTR', icon: '🍉', odds: 20,  color: 'tag-grey' },
+        { id: 4, name: 'BEL', icon: '🔔', odds: 20,  color: 'tag-red' },
+        { id: 5, name: 'LEM', icon: '🍋', odds: 15,  color: 'tag-grey' },
+        { id: 6, name: 'ORG', icon: '🍊', odds: 10,  color: 'tag-grey' },
+        { id: 7, name: 'APP', icon: '🍎', odds: 5,   color: 'tag-blue' }
+    ];
 
-    // 强制启动定时器
-    setTimeout(() => {
-        if(loader.style.display !== 'none') {
-            console.warn("Force starting offline mode...");
-            status.innerText = "Starting Offline Mode...";
-            useMock = true;
-            startGameLogic();
+    // 盘面布局 (顺时针顺序, 对应 ITEMS 的索引，99代表LUCK/JP)
+    // 0=BAR, 1=77, 2=STR, 3=WTR, 4=BEL, 5=LEM, 6=ORG, 7=APP
+    const BOARD_LAYOUT_IDS = [
+        6, 4, 0, 0, 7, 7, // Top row (0-5)
+        4, 99, 3,         // Right col (6-8) (99 is center filler logic, handled separately)
+        3, 7,             // Right col cont.
+        99, 99,           // Bottom (11,12) - Wait, Grid is 6x6.
+        // Let's map indices manually to the visual 6x6 ring.
+        // Top: (0,0) to (0,5)
+        // Right: (1,5) to (5,5)
+        // Bottom: (5,4) to (5,0)
+        // Left: (4,0) to (1,0)
+    ];
+
+    // 24格的实际物品定义 (索引顺序：左上角开始顺时针)
+    // 简化版布局配置
+    const GRID_ITEMS = [
+        {type: 6, sub:''}, {type: 4, sub:'x3'}, {type: 0, sub:'x50'}, {type: 0, sub:'x100'}, {type: 7, sub:''}, {type: 7, sub:'x3'}, // Top
+        {type: 4, sub:'x3'}, {type: 99, sub:'R1'}, {type: 99, sub:'R2'}, {type: 3, sub:''}, {type: 3, sub:'x3'}, // Right
+        {type: 99, sub:'L1'}, {type: 99, sub:'L2'}, // LUCK spots on right bottom
+        {type: 2, sub:'x3'}, {type: 7, sub:''}, // Bottom Right continued...
+
+        // 其实直接定义24个格子的数据结构更容易
+        // 0-5 (Top), 6-10 (Right), 11-16 (Bottom Rev), 17-23 (Left Rev)
+    ];
+
+    // 重写更清晰的环形数据结构
+    const RING_DATA = [
+        // Top Row (Left to Right)
+        {i:6, m:1}, {i:4, m:3}, {i:0, m:50}, {i:0, m:100}, {i:7, m:1}, {i:7, m:3},
+        // Right Col (Top to Bottom)
+        {i:4, m:3}, {i:3, m:1}, {i:3, m:3}, {i:98, m:0}, {i:7, m:1},
+        // Bottom Row (Right to Left)
+        {i:4, m:1}, {i:1, m:3}, {i:1, m:1}, {i:5, m:3}, {i:5, m:1}, {i:2, m:1},
+        // Left Col (Bottom to Top)
+        {i:7, m:1}, {i:2, m:3}, {i:98, m:0}, {i:3, m:3}, {i:7, m:1}, {i:6, m:1}
+    ];
+    // Correction: Standard machine has 24 slots. 6x6 perimeter is 20 slots.
+    // The image has 6 cols, 6 rows.
+    // Perimeter = 6 + 6 + 6 + 6 - 4 corners = 20.
+    // Wait, the image counts:
+    // Row 1: 6 cells.
+    // Row 2: 1 cell (left), Center(4wide), 1 cell (right).
+    // ...
+    // Total perimeter cells = 6 (top) + 6 (bottom) + 4 (left mid) + 4 (right mid) = 20 cells?
+    // Let's count image:
+    // Top: 6
+    // Bottom: 6
+    // Left side vertical between top/bot: 4
+    // Right side vertical between top/bot: 4
+    // Total = 20.
+    // But standard data is usually 24. I will adjust to 20 for visual accuracy to the 6x6 grid.
+
+    const GAME_RING = [
+        // Top 0-5
+        {id:6, l:'🍊'}, {id:4, l:'🔔', s:'x3'}, {id:0, l:'💎', s:'50'}, {id:0, l:'💎', s:'100'}, {id:7, l:'🍎'}, {id:7, l:'🍎', s:'x3'},
+        // Right 6-9
+        {id:3, l:'🍉'}, {id:3, l:'🍉', s:'x3'}, {id:99, l:'LUCK'}, {id:7, l:'🍎'},
+        // Bottom 10-15 (Reversed in logic, but let's list linearly for array)
+        {id:6, l:'🍊', s:'x3'}, {id:1, l:'77', s:'x3'}, {id:1, l:'77'}, {id:5, l:'🍒', s:'x3'}, {id:5, l:'🍋', s:'x3'}, {id:2, l:'⭐'},
+        // Left 16-19
+        {id:2, l:'⭐', s:'x3'}, {id:99, l:'LUCK'}, {id:4, l:'🔔', s:'x3'}, {id:6, l:'🍊'}
+    ];
+    // This is 20 slots.
+
+    // === 音效管理器 ===
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const Sound = {
+        playTone: (freq, type, duration) => {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        },
+        click: () => Sound.playTone(800, 'square', 0.1),
+        bet: () => Sound.playTone(1200, 'sine', 0.1),
+        step: () => Sound.playTone(600, 'triangle', 0.05),
+        win: () => {
+            [400, 500, 600, 800, 1000].forEach((f, i) => setTimeout(() => Sound.playTone(f, 'square', 0.2), i*100));
         }
-    }, 3000);
-
-    // === 环境适配 ===
-    const tg = window.Telegram?.WebApp;
-    if(tg) { tg.ready(); tg.expand(); try{tg.setHeaderColor('#b71c1c');}catch(e){} }
-
-    function adjustViewport() {
-        const h = (tg && tg.viewportStableHeight) ? tg.viewportStableHeight : window.innerHeight;
-        document.getElementById('app-root').style.height = h + 'px';
-    }
-    window.addEventListener('resize', adjustViewport);
-    adjustViewport();
-
-    // === 数据配置 ===
-    const VISUAL_MAP = {
-        1: { icon: '💎', color: 'pb-green', tag: 'bg-blue' },
-        2: { icon: '7️⃣', color: 'pb-purp', tag: 'bg-red' },
-        3: { icon: '⭐', color: 'pb-green', tag: 'bg-grey' },
-        4: { icon: '🍉', color: 'pb-green', tag: 'bg-grey' },
-        5: { icon: '🔔', color: 'pb-green', tag: 'bg-red' },
-        6: { icon: '🍋', color: 'pb-green', tag: 'bg-grey' },
-        7: { icon: '🍊', color: 'pb-green', tag: 'bg-grey' },
-        8: { icon: '🍎', color: 'pb-red', tag: 'bg-blue' },
-        9: { icon: '❓', color: '', tag: '' }
     };
 
-    const MOCK_DATA = {
-        fruits: [
-            {id:1, name:'BAR', multiplier:100}, {id:2, name:'77', multiplier:40},
-            {id:3, name:'STAR', multiplier:30}, {id:4, name:'WTR', multiplier:20},
-            {id:5, name:'BEL', multiplier:20}, {id:6, name:'LEM', multiplier:15},
-            {id:7, name:'ORG', multiplier:10}, {id:8, name:'APP', multiplier:5},
-            {id:9, name:'LUCKY', multiplier:0}
-        ],
-        layout: [7,5,1,1,8,8,6, 4,4,9,8,8,7, 5,2,2,8,8,6, 3,3,9,8,8],
-        balance: 5000
-    };
+    // === 游戏控制器 ===
+    const game = {
+        balance: 5000,
+        bets: {},
+        isSpinning: false,
+        activeIndex: 0, // 当前亮灯位置
 
-    let FRUIT_CONFIG=[], BOARD_LAYOUT=[], currentBets={}, isSpinning=false, autoPlay=false, squares=[], app, useMock=false;
-    const sfx = {
-        click: new Howl({src:['https://lib.baomitu.com/howler/2.2.4/howler.min.js']}), // Placeholder
-        spin: null, win: null
-    };
+        init: function() {
+            this.renderGrid();
+            this.renderControls();
+            this.updateDisplay();
+            ITEMS.forEach(i => this.bets[i.id] = 0);
+        },
 
-    // === 初始化 ===
-    async function initGame() {
-        status.innerText = "Connecting...";
-        try {
-            // 尝试连接后端 (1秒超时)
-            if(typeof axios !== 'undefined') {
-                const res = await axios.get('/api/game/config', {timeout: 1000});
-                FRUIT_CONFIG=res.data.data.fruits; BOARD_LAYOUT=res.data.data.layout; useMock=false;
-                status.innerText = "Online Mode Ready";
+        renderGrid: function() {
+            const container = document.getElementById('grid-box');
+            let html = '';
+
+            // Grid 6x6.
+            // Indices mapping:
+            // 0-5: Row 1
+            // 6: Row 2 Col 1 (Index 19 in Ring)
+            // Center: Row 2 Col 2-5
+            // 7: Row 2 Col 6 (Index 6 in Ring)
+            // ...
+
+            // Construct visual grid cells
+            // Top Row
+            for(let i=0; i<6; i++) html += this.createCell(i);
+
+            // Row 2
+            html += this.createCell(19);
+            html += `<div class="center-stage">
+                        <div class="god-image">👺</div>
+                        <div class="center-hud">
+                            <button class="hud-btn">-</button>
+                            <span style="color:white;font-weight:bold;font-size:14px">10</span>
+                            <button class="hud-btn">+</button>
+                        </div>
+                        <div class="countdown-led">JP: 8888</div>
+                     </div>`; // Spans 4 cols
+            html += this.createCell(6);
+
+            // Row 3
+            html += this.createCell(18);
+            html += this.createCell(7);
+
+            // Row 4
+            html += this.createCell(17);
+            html += this.createCell(8);
+
+            // Row 5
+            html += this.createCell(16);
+            html += this.createCell(9);
+
+            // Bottom Row (Row 6) - Ring indices 15 down to 10
+            for(let i=15; i>=10; i--) html += this.createCell(i);
+
+            container.innerHTML = html;
+        },
+
+        createCell: function(ringIndex) {
+            const data = GAME_RING[ringIndex];
+            const isSpec = data.id === 99;
+            const cls = isSpec ? 'cell' : `cell type-${ITEMS.find(x=>x.id===data.id)?.name.toLowerCase() || 'common'}`;
+            return `<div class="cell ${cls}" id="cell-${ringIndex}" data-id="${data.id}">
+                        <div class="icon">${data.l}</div>
+                        ${data.s ? `<div class="multi">${data.s}</div>` : ''}
+                    </div>`;
+        },
+
+        renderControls: function() {
+            const oddsRow = document.getElementById('odds-row');
+            const betBtns = document.getElementById('bet-btns');
+
+            ITEMS.forEach(item => {
+                // Odds Row
+                oddsRow.innerHTML += `
+                    <div class="bet-cell">
+                        <div class="odds-tag ${item.color}">${item.odds}</div>
+                        <div class="led-small" id="bet-display-${item.id}">0</div>
+                    </div>
+                `;
+
+                // Footer Buttons
+                betBtns.innerHTML += `
+                    <div class="fruit-btn-wrap">
+                        <div class="fruit-btn" onclick="game.placeBet(${item.id})">${item.icon}</div>
+                    </div>
+                `;
+            });
+        },
+
+        placeBet: function(id) {
+            if(this.isSpinning) return;
+            if(this.balance < 10) return this.toast("余额不足!");
+
+            this.balance -= 10;
+            this.bets[id] += 10;
+            Sound.bet();
+            this.updateDisplay();
+
+            // Button animation effect
+            const btn = document.getElementById(`bet-display-${id}`);
+            btn.style.color = '#fff';
+            setTimeout(() => btn.style.color = '#76ff03', 100);
+        },
+
+        autoBet: function() {
+            if(this.isSpinning) return;
+            // Simple logic: bet 10 on everything
+            ITEMS.forEach(i => {
+                if(this.balance >= 10) {
+                    this.balance -= 10;
+                    this.bets[i.id] += 10;
+                }
+            });
+            Sound.bet();
+            this.updateDisplay();
+        },
+
+        updateDisplay: function() {
+            document.getElementById('credit-display').innerText = this.balance;
+            ITEMS.forEach(i => {
+                document.getElementById(`bet-display-${i.id}`).innerText = this.bets[i.id];
+            });
+        },
+
+        toast: function(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.opacity = 1;
+            setTimeout(()=> t.style.opacity = 0, 2000);
+        },
+
+        // === 核心转动逻辑 ===
+        spin: function() {
+            const totalBet = Object.values(this.bets).reduce((a,b)=>a+b, 0);
+            if(totalBet === 0) return this.toast("请先下注!");
+            if(this.isSpinning) return;
+
+            this.isSpinning = true;
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('win-display').innerText = "0";
+
+            // 移除之前的赢家特效
+            document.querySelectorAll('.winner').forEach(el => el.classList.remove('winner'));
+
+            // 决定结果 (简单的伪随机，实际应由后端决定)
+            // 这里为了演示，随便随机一个格子
+            const stopIndex = Math.floor(Math.random() * 20);
+            const loops = 3; // 至少转3圈
+            const totalSteps = (20 * loops) + (stopIndex - this.activeIndex + 20) % 20;
+
+            let currentStep = 0;
+
+            const run = () => {
+                // 移除上一个高亮
+                document.getElementById(`cell-${this.activeIndex}`).classList.remove('active');
+
+                // 移动到下一个
+                this.activeIndex = (this.activeIndex + 1) % 20;
+                const el = document.getElementById(`cell-${this.activeIndex}`);
+                el.classList.add('active');
+                Sound.step();
+
+                currentStep++;
+
+                if(currentStep < totalSteps) {
+                    // 物理变速逻辑
+                    let speed = 50; // 最快速度
+                    const remaining = totalSteps - currentStep;
+
+                    // 起步阶段
+                    if(currentStep < 10) speed = 300 - (currentStep * 20);
+                    // 减速阶段
+                    else if(remaining < 15) speed = 50 + ((15 - remaining) * 20); // 线性增加延迟
+                    else if(remaining < 5) speed = 400; // 最后几步非常慢
+
+                    setTimeout(run, speed);
+                } else {
+                    this.gameEnd(stopIndex);
+                }
+            };
+
+            run();
+        },
+
+        gameEnd: function(stopIdx) {
+            this.isSpinning = false;
+            document.getElementById('start-btn').disabled = false;
+
+            const resultItem = GAME_RING[stopIdx];
+            const el = document.getElementById(`cell-${stopIdx}`);
+            el.classList.add('winner'); // 闪烁特效
+
+            // 计算奖励
+            if(resultItem.id !== 99) {
+                const betAmount = this.bets[resultItem.id];
+                const odds = ITEMS.find(i=>i.id===resultItem.id).odds;
+                // 如果格子上有倍率 (如 x3)，还要乘
+                let multi = 1;
+                if(resultItem.s === 'x3') multi = 3;
+                if(resultItem.s === '50') multi = 50; // Special case for Bar
+
+                const win = betAmount * odds * multi;
+
+                if(win > 0) {
+                    Sound.win();
+                    this.animateWin(win);
+                }
             } else {
-                throw new Error("Axios not loaded");
+                // Luck 逻辑 (简化)
+                this.toast("LUCKY!");
+                Sound.win();
             }
-        } catch(e) {
-            console.log("Offline Mode Active");
-            FRUIT_CONFIG=MOCK_DATA.fruits; BOARD_LAYOUT=MOCK_DATA.layout; useMock=true;
-            status.innerText = "Offline Mode Ready";
+
+            // 清空押注 (可选)
+            ITEMS.forEach(i => this.bets[i.id] = 0);
+            this.updateDisplay();
+        },
+
+        animateWin: function(amount) {
+            const display = document.getElementById('win-display');
+            let current = 0;
+            const step = Math.ceil(amount / 20);
+            const tm = setInterval(() => {
+                current += step;
+                if(current >= amount) {
+                    current = amount;
+                    clearInterval(tm);
+                    this.balance += amount;
+                    this.updateDisplay();
+                }
+                display.innerText = current;
+                display.style.color = (current % 2 === 0) ? '#fff' : 'red';
+            }, 50);
         }
+    };
 
-        startGameLogic();
-    }
+    // 启动
+    game.init();
 
-    let gameStarted = false;
-    function startGameLogic() {
-        if(gameStarted) return; // 防止重复启动
-        gameStarted = true;
-
-        FRUIT_CONFIG.forEach(f=>{ if(f.id!==9) currentBets[f.id]=0; });
-        initPixi(); initUI(); refreshBalance();
-
-        loader.style.opacity='0';
-        setTimeout(()=>loader.style.display='none', 500);
-    }
-
-    function initUI() {
-        const div = document.getElementById('betButtonsContainer');
-        div.innerHTML='';
-        FRUIT_CONFIG.filter(f=>f.id!==9).forEach(f=>{
-            const s = VISUAL_MAP[f.id] || VISUAL_MAP[8];
-            const col = document.createElement('div');
-            col.className='bet-col';
-            col.innerHTML=`
-                <div class="odds-glass ${s.tag}">x${f.multiplier}</div>
-                <div class="led-window" id="bet-val-${f.id}">0</div>
-                <button class="push-btn ${s.color}" onclick="addBet(${f.id})"><span>${s.icon}</span></button>
-            `;
-            div.appendChild(col);
-        });
-    }
-
-    function initPixi() {
-        const wrap = document.getElementById('game-wrapper');
-        // 使用高分辨率逻辑尺寸
-        const LOGIC = 600;
-
-        if(!window.PIXI) {
-            status.innerText = "PixiJS Load Failed";
-            return;
-        }
-
-        app = new PIXI.Application({width:LOGIC, height:LOGIC, backgroundAlpha:0, resolution:2});
-        wrap.appendChild(app.view);
-
-        // ★ CSS 接管 Canvas 尺寸，JS 只负责内部渲染
-        // Canvas 不需要 resize 事件，它会自动被 CSS 缩放
-
-        const bg = new PIXI.Graphics(); bg.beginFill(0xfdf5e6); bg.drawRect(0,0,LOGIC,LOGIC); app.stage.addChild(bg);
-
-        const center = new PIXI.Container();
-        const cBg = new PIXI.Graphics();
-        cBg.beginFill(0xb71c1c); cBg.drawRoundedRect(0,0,380,380,20);
-        cBg.beginFill(0xffecb3); cBg.drawCircle(190,190,180);
-        center.addChild(cBg);
-
-        const txt = new PIXI.Text("CAISHEN", {fontFamily:'Arial', fontSize:50, fill:['#d50000','#ff6f00'], fontWeight:'bold', stroke:'#fff', strokeThickness:6});
-        txt.anchor.set(0.5); txt.position.set(190,150); center.addChild(txt);
-
-        const midUI = new PIXI.Container(); midUI.position.set(50,280);
-        midUI.addChild(new PIXI.Graphics().beginFill(0x0d47a1).drawRoundedRect(0,0,280,60,30));
-        midUI.addChild(new PIXI.Graphics().beginFill(0x000).drawRoundedRect(80,10,120,40,5));
-        const ln = new PIXI.Text("JP", {fontFamily:'Arial', fontSize:28, fill:'#ff5252', fontWeight:'bold'});
-        ln.anchor.set(0.5); ln.position.set(140,30); midUI.addChild(ln);
-        center.addChild(midUI);
-        center.position.set(110,110); app.stage.addChild(center);
-
-        const step=84, start=5, box=82;
-        const POS=[];
-        for(let i=0;i<7;i++) POS.push({x:start+i*step, y:start});
-        for(let i=1;i<=6;i++) POS.push({x:start+6*step, y:start+i*step});
-        for(let i=5;i>=0;i--) POS.push({x:start+i*step, y:start+6*step});
-        for(let i=5;i>=1;i--) POS.push({x:start, y:start+i*step});
-
-        squares=[];
-        POS.forEach((p,idx)=>{
-            const id=BOARD_LAYOUT[idx];
-            const fc=FRUIT_CONFIG.find(x=>x.id==id)||FRUIT_CONFIG[0];
-            const st=VISUAL_MAP[id]||VISUAL_MAP[9];
-            const g=new PIXI.Container(); g.x=p.x; g.y=p.y;
-
-            const b=new PIXI.Graphics(); b.lineStyle(2,0x3e2723); b.beginFill(id===9?0xffcdd2:0xfff8e1); b.drawRoundedRect(0,0,box,box,14); g.addChild(b);
-            const ic=new PIXI.Text(st.icon, {fontSize:40}); ic.anchor.set(0.5); ic.position.set(box/2, box/2-4); g.addChild(ic);
-            const lb=new PIXI.Text(id===9?'JP':`x${fc.multiplier}`, {fontFamily:'Arial', fontSize:14, fontWeight:'bold', fill:id===9?'#d32f2f':'#333'});
-            lb.anchor.set(0.5); lb.position.set(box/2, box-14); g.addChild(lb);
-
-            const hl=new PIXI.Graphics(); hl.lineStyle(6,0xff0000); hl.beginFill(0xffff00,0.3); hl.drawRoundedRect(-2,-2,box+4,box+4,16); hl.visible=false; g.addChild(hl);
-            squares.push({highlight:hl, id:id}); app.stage.addChild(g);
-        });
-        if(squares.length) squares[0].highlight.visible=true;
-    }
-
-    function addBet(id) {
-        if(isSpinning) return;
-        currentBets[id]+=10;
-        document.getElementById(`bet-val-${id}`).innerText=currentBets[id];
-        if(useMock){ MOCK_DATA.balance-=10; refreshBalance(); }
-        sfx.click.play();
-    }
-
-    async function refreshBalance() {
-        if(useMock) document.getElementById('balanceDisplay').innerText=String(MOCK_DATA.balance).padStart(8,'0');
-        else try{
-            const r=await axios.get('/api/game/balance');
-            document.getElementById('balanceDisplay').innerText=String(r.data.data.balance).padStart(8,'0');
-        }catch(e){}
-    }
-
-    async function spin() {
-        const total = Object.values(currentBets).reduce((a,b)=>a+b,0);
-        if(total===0) return showToast("请先下注");
-        isSpinning=true; document.getElementById('startBtn').disabled=true;
-
-        let tIdx=0, win=0;
-        try {
-            if(useMock) {
-                tIdx=Math.floor(Math.random()*24);
-                const winId=BOARD_LAYOUT[tIdx];
-                win=(winId===9)?200:(currentBets[winId]||0)*FRUIT_CONFIG.find(x=>x.id==winId).multiplier;
-                await new Promise(r=>setTimeout(r,500));
-            } else {
-                const r=await axios.post('/api/game/spin', {bets:currentBets});
-                tIdx=r.data.data.stop_index; win=r.data.data.win_amount;
-            }
-            await runAnim(tIdx);
-            isSpinning=false; document.getElementById('startBtn').disabled=false;
-            if(win>0) {
-                document.getElementById('winDisplay').innerText=win;
-                if(useMock) MOCK_DATA.balance+=win; refreshBalance();
-            }
-        } catch(e) { isSpinning=false; document.getElementById('startBtn').disabled=false; showToast("Error"); }
-    }
-
-    function runAnim(t) {
-        return new Promise(r=>{
-            let c=squares.findIndex(s=>s.highlight.visible); if(c<0)c=0; let rd=0;
-            const tm=setInterval(()=>{
-                c++; if(c>=24){c=0;rd++;}
-                squares.forEach(s=>s.highlight.visible=false); squares[c].highlight.visible=true;
-                if(rd>=2 && c===t) { clearInterval(tm); r(); }
-            },50);
-        });
-    }
-
-    function openWallet(){ document.getElementById('walletModal').style.display='flex'; }
-    function toggleAuto(){autoPlay=!autoPlay; document.querySelector('.btn-auto').style.color=autoPlay?'#76ff03':'#fff';}
-    function showToast(m){const t=document.getElementById('msg-toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',2000);}
-
-    // Start Game
-    initGame();
 </script>
 </body>
 </html>
