@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Royal Fruit - Stable</title>
+    <title>Royal Fruit - Responsive Deck</title>
 
-    <!-- 更换为更稳定的 CDN 源 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://pixijs.download/v7.x/pixi.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
@@ -31,7 +30,6 @@
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             color: #ffd700; font-family: 'Orbitron'; font-size: 20px; transition: opacity 0.5s;
         }
-        #loading-text { margin-top: 10px; font-size: 12px; color: #666; }
 
         #app-root {
             width: 100%; height: 100%; max-width: 550px; margin: 0 auto;
@@ -40,79 +38,144 @@
             box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
 
-        /* 1. Top Hood */
+        /* 1. 顶部 (高度压缩适配) */
         .top-hood {
-            flex: 0 0 auto; height: 70px;
+            flex: 0 0 auto;
+            height: 60px; /* 稍微调低默认高度 */
             background: radial-gradient(circle at 50% 100%, #ff5252, #b71c1c);
             border-bottom: 4px solid #ffd700;
             display: flex; justify-content: space-between; align-items: center;
-            padding: 5px 15px; padding-top: max(5px, env(safe-area-inset-top));
-            z-index: 20; position: relative; box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-            transition: height 0.3s;
+            padding: 2px 10px;
+            padding-top: max(5px, env(safe-area-inset-top));
+            z-index: 20; position: relative;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
         }
         .bulb-deco { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 60%; display: flex; justify-content: space-between; pointer-events: none; }
         .bulb { width: 6px; height: 6px; background: #fff; border-radius: 50%; box-shadow: 0 0 8px #fff; }
 
         .lcd-group { text-align: center; }
-        .lcd-label { color: #29b6f6; font-size: 10px; font-weight: bold; margin-bottom: 1px; }
+        .lcd-label { color: #29b6f6; font-size: 9px; font-weight: bold; margin-bottom: 1px; }
         .lcd-frame { background: #000; padding: 2px; border-radius: 6px; border-bottom: 1px solid #444; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-        .lcd-screen { background: radial-gradient(#222, #000); border: 1px solid #333; border-radius: 4px; padding: 0 8px; min-width: 90px; }
-        .lcd-digit { font-family: 'Orbitron', monospace; font-size: 18px; color: #ff1744; text-shadow: 0 0 8px #d50000; letter-spacing: 1px; }
+        .lcd-screen { background: radial-gradient(#222, #000); border: 1px solid #333; border-radius: 4px; padding: 0 6px; min-width: 80px; }
+        .lcd-digit { font-family: 'Orbitron', monospace; font-size: 16px; color: #ff1744; text-shadow: 0 0 8px #d50000; letter-spacing: 1px; }
         #balanceDisplay { color: #fff; text-shadow:none; }
 
-        /* 2. Game Area */
+        /* 2. 中间 (弹性) */
         #game-wrapper {
             flex: 1 1 auto; min-height: 0; width: 100%;
             background: #fdf5e6;
-            border-left: 3px solid #0d47a1; border-right: 3px solid #0d47a1;
+            border-left: 2px solid #0d47a1; border-right: 2px solid #0d47a1;
             display: flex; justify-content: center; align-items: center;
             overflow: hidden;
         }
 
-        /* 3. Control Deck */
+        /* 3. 底部操作台 (核心重构：Grid + Flex) */
         .control-deck {
             flex: 0 0 auto;
             background: linear-gradient(180deg, #42a5f5 0%, #1565c0 40%, #0d47a1 100%);
             border-top: 4px solid #ffd700;
-            padding: 8px; padding-bottom: calc(10px + env(safe-area-inset-bottom));
+            padding: 6px;
+            padding-bottom: calc(8px + env(safe-area-inset-bottom));
             display: flex; flex-direction: column; gap: 6px;
-            position: relative; z-index: 10; transition: padding 0.3s;
+            position: relative; z-index: 10;
         }
 
-        /* Responsive Logic */
-        @media screen and (max-height: 700px) {
-            .top-hood { height: 50px; padding: 2px 15px; }
-            .lcd-digit { font-size: 14px; }
-            .lcd-screen { min-width: 70px; padding: 0 4px; }
-            .control-deck { gap: 3px; padding: 4px; padding-bottom: max(5px, env(safe-area-inset-bottom)); }
-            .b-round-green { width: 36px; height: 36px; font-size: 9px; }
-            .b-sq { height: 32px; font-size: 12px; }
-            .b-blue { font-size: 16px; }
-            .b-go { width: 60px; height: 36px; font-size: 16px; }
-            .odds-glass { height: 20px; font-size: 10px; }
-            .led-window { height: 18px; font-size: 12px; }
-            .push-btn span { font-size: 16px; }
+        /* 第一排：功能键 (Flex 均分) */
+        .func-row {
+            display: flex; gap: 4px;
+            justify-content: space-between; align-items: stretch; /* 强制等高 */
+            padding: 4px; background: rgba(0,0,0,0.2); border-radius: 10px;
+            height: 50px; /* 固定高度确保整齐 */
         }
 
-        /* UI Components */
-        .func-row { display: flex; gap: 6px; justify-content: space-between; align-items: center; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 10px; }
-        .btn-3d { border: none; position: relative; cursor: pointer; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+        .btn-3d {
+            border: none; position: relative; cursor: pointer; color: #fff; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.1s;
+            /* 关键：取消固定宽度，让 Flex 决定 */
+            flex: 1; min-width: 0;
+        }
         .btn-3d:active { transform: translateY(3px); box-shadow: 0 0 0 transparent !important; border-bottom-width: 0 !important;}
 
-        .bet-panel { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; background: #0d47a1; padding: 4px; border-radius: 8px; }
-        .bet-col { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+        /* 圆形按钮 (ADD) */
+        .b-round-green {
+            /* 保持正圆 */
+            aspect-ratio: 1/1; flex: 0 0 auto; height: 100%;
+            border-radius: 50%; background: linear-gradient(180deg, #76ff03 0%, #33691e 100%);
+            box-shadow: 0 4px 0 #1b5e20; border: 2px solid #b2ff59;
+            font-size: 10px; flex-direction: column; line-height: 1.1;
+        }
 
-        .b-round-green { width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(180deg, #76ff03 0%, #33691e 100%); box-shadow: 0 4px 0 #1b5e20; border: 2px solid #b2ff59; font-size: 10px; flex-direction: column; }
-        .b-sq { height: 40px; border-radius: 8px; font-size: 14px; flex: 1; box-shadow: 0 4px 0 rgba(0,0,0,0.4); border-top: 1px solid rgba(255,255,255,0.4); }
-        .b-go { width: 75px; height: 45px; border-radius: 10px; background: linear-gradient(180deg, #ffeb3b 0%, #ff6f00 100%); box-shadow: 0 5px 0 #e65100; border: 2px solid #fff; color: #b71c1c; font-family: 'Orbitron'; font-size: 22px; }
+        /* 方形组 */
+        .grp-blue { flex: 1.5; display: flex; gap: 2px; }
+        .grp-purp { flex: 2; display: flex; gap: 2px; }
 
-        .odds-glass { width: 100%; height: 26px; font-size: 13px; font-weight: 900; color: #fff; display: flex; align-items: center; justify-content: center; text-shadow: 0 1px 2px #000; border: 1px solid rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.6); }
-        .led-window { width: 100%; height: 24px; background: #000; border: 1px solid #555; color: #ff1744; font-family: 'Orbitron'; font-size: 15px; display: flex; align-items: center; justify-content: center; }
-        .push-btn { width: 100%; aspect-ratio: 1; border-radius: 50%; border: none; position: relative; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; border-top: 1px solid rgba(255,255,255,0.5); }
-        .push-btn span { font-size: 22px; text-shadow: 1px 1px 2px #000; }
+        .b-sq {
+            width: 100%; height: 100%; border-radius: 8px;
+            font-size: 12px;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.4); border-top: 1px solid rgba(255,255,255,0.4);
+        }
 
-        .b-blue { background: linear-gradient(180deg, #29b6f6 0%, #01579b 100%); font-size: 20px; }
-        .b-purp { background: linear-gradient(180deg, #ab47bc 0%, #4a148c 100%); font-size: 12px; }
+        /* GO 按钮 */
+        .b-go {
+            flex: 1.2; border-radius: 10px; height: 100%;
+            background: linear-gradient(180deg, #ffeb3b 0%, #ff6f00 100%);
+            box-shadow: 0 5px 0 #e65100; border: 2px solid #fff;
+            color: #b71c1c; font-family: 'Orbitron'; font-size: 18px;
+        }
+
+        /* 下注面板 (核心重构：Grid 自适应) */
+        .bet-panel {
+            display: grid;
+            /* 强制分为 8 列 */
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px; /* 极小间距 */
+            background: #0d47a1; padding: 4px; border-radius: 8px;
+        }
+
+        /* 每一列 */
+        .bet-col {
+            display: flex; flex-direction: column; align-items: center; gap: 1px;
+            width: 100%; overflow: hidden; /* 防止撑开 */
+        }
+
+        /* 元素 100% 宽度，自适应内容 */
+        .odds-glass {
+            width: 100%; height: 20px;
+            /* 动态字体 */
+            font-size: clamp(8px, 2.5vw, 12px);
+            font-weight: 900; color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            text-shadow: 0 1px 1px #000;
+            border: 1px solid rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.6);
+        }
+
+        .led-window {
+            width: 100%; height: 18px;
+            background: #000; border: 1px solid #555;
+            color: #ff1744; font-family: 'Orbitron';
+            font-size: clamp(9px, 3vw, 14px);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .push-btn {
+            width: 100%;
+            /* 保持正圆 */
+            aspect-ratio: 1 / 1;
+            border-radius: 50%; border: none; position: relative; cursor: pointer;
+            box-shadow: 0 3px 0 rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center;
+            border-top: 1px solid rgba(255,255,255,0.5);
+        }
+        .push-btn span {
+            font-size: clamp(14px, 4vw, 22px); /* 图标随宽度缩放 */
+            text-shadow: 1px 1px 2px #000;
+        }
+        .push-btn:active { transform: translateY(2px); box-shadow: none; }
+
+        /* 颜色类 */
+        .b-blue { background: linear-gradient(180deg, #29b6f6 0%, #01579b 100%); font-size: 16px; }
+        .b-purp { background: linear-gradient(180deg, #ab47bc 0%, #4a148c 100%); }
         .bg-blue { background: linear-gradient(180deg, #42a5f5 0%, #1565c0 100%); }
         .bg-red { background: linear-gradient(180deg, #ef5350 0%, #b71c1c 100%); }
         .bg-grey { background: linear-gradient(180deg, #90a4ae 0%, #455a64 100%); }
@@ -120,6 +183,7 @@
         .pb-purp { background: linear-gradient(180deg, #e040fb 0%, #7b1fa2 100%); }
         .pb-red { background: linear-gradient(180deg, #ff5252 0%, #b71c1c 100%); }
 
+        /* 辅助元素 */
         #msg-toast { position:absolute; bottom: 20%; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:20px; display:none; z-index:100; pointer-events:none; }
         .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; justify-content:center; align-items:center; }
         .modal-body { background: #fff; width: 300px; padding: 20px; border-radius: 10px; font-family: sans-serif; }
@@ -127,13 +191,11 @@
 </head>
 <body>
 
-<div id="loading-mask">
-    <div>LOADING SYSTEM...</div>
-    <div id="loading-text">Connecting to server</div>
-</div>
+<div id="loading-mask">INITIALIZING...</div>
 <div id="msg-toast"></div>
 
 <div id="app-root">
+    <!-- 顶部 -->
     <div class="top-hood">
         <div class="bulb-deco"><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div></div>
         <div class="lcd-group">
@@ -146,21 +208,25 @@
         </div>
     </div>
 
+    <!-- 游戏区 -->
     <div id="game-wrapper"></div>
 
+    <!-- 底部 (Grid布局) -->
     <div class="control-deck">
+        <!-- 功能按键行 -->
         <div class="func-row">
             <button class="btn-3d b-round-green" onclick="openWallet()">$<br>ADD</button>
-            <div style="display:flex; gap:4px; flex:1.5">
+            <div class="grp-blue">
                 <button class="btn-3d b-sq b-blue">⬅</button>
                 <button class="btn-3d b-sq b-blue">➡</button>
             </div>
-            <div style="display:flex; gap:4px; flex:1.5">
+            <div class="grp-purp">
                 <button class="btn-3d b-sq b-purp btn-auto" onclick="toggleAuto()">AUTO</button>
                 <button class="btn-3d b-sq b-purp">8-13</button>
             </div>
             <button class="btn-3d b-go" id="startBtn" onclick="spin()">GO</button>
         </div>
+        <!-- 下注按钮行 -->
         <div class="bet-panel" id="betButtonsContainer"></div>
     </div>
 </div>
@@ -168,36 +234,26 @@
 <!-- Wallet Modal -->
 <div id="walletModal" class="modal-overlay">
     <div class="modal-body">
-        <h3>钱包功能</h3>
-        <p>这里是充值和提现界面 (模拟)。</p>
-        <button onclick="document.getElementById('walletModal').style.display='none'" style="margin-top:10px;padding:10px;width:100%">关闭</button>
+        <h3>钱包</h3>
+        <p>充值通道加载中...</p>
+        <button onclick="document.getElementById('walletModal').style.display='none'" style="margin-top:10px;padding:8px;width:100%">关闭</button>
     </div>
 </div>
 
 <script>
-    // === 强力启动逻辑 ===
-    window.addEventListener('load', () => {
-        // 安全阀：3秒后无论如何强制进入游戏
-        setTimeout(() => {
-            const mask = document.getElementById('loading-mask');
-            if(mask && mask.style.display !== 'none') {
-                console.warn("Force start triggered");
-                forceEnterGame();
-            }
-        }, 3000);
-    });
-
+    // === 环境适配 ===
     const tg = window.Telegram?.WebApp;
     if(tg) { tg.ready(); tg.expand(); try { tg.setHeaderColor('#b71c1c'); } catch(e){} }
 
-    function adjustHeight() {
+    function adjustViewport() {
         const h = (tg && tg.viewportStableHeight) ? tg.viewportStableHeight : window.innerHeight;
         document.getElementById('app-root').style.height = h + 'px';
         if(app) resizePixi();
     }
-    if(tg) tg.onEvent('viewportChanged', adjustHeight);
-    window.addEventListener('resize', adjustHeight);
+    if(tg) tg.onEvent('viewportChanged', adjustViewport);
+    window.addEventListener('resize', adjustViewport);
 
+    // === 配置 ===
     const VISUAL_MAP = {
         1: { icon: '💎', color: 'pb-green', tag: 'bg-blue' },
         2: { icon: '7️⃣', color: 'pb-purp', tag: 'bg-red' },
@@ -224,46 +280,24 @@
 
     let FRUIT_CONFIG=[], BOARD_LAYOUT=[], currentBets={}, isSpinning=false, autoPlay=false, squares=[], app, useMock=false;
     const sfx = {
-        click: new Howl({src:['https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js']}), // Placeholder
+        click: new Howl({src:['https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js']}),
         spin: null, win: null
     };
 
     async function initGame() {
-        adjustHeight();
+        adjustViewport();
         try {
-            // 尝试连接后端 (1秒超时)
-            const res = await axios.get('/api/game/config', { timeout: 1000 });
-            const data = res.data.data;
-            FRUIT_CONFIG = data.fruits;
-            BOARD_LAYOUT = data.layout;
-            useMock = false;
-        } catch (e) {
-            console.log("Using Offline Data");
-            FRUIT_CONFIG = MOCK_DATA.fruits;
-            BOARD_LAYOUT = MOCK_DATA.layout;
-            useMock = true;
+            const res = await axios.get('/api/game/config', {timeout: 1000});
+            FRUIT_CONFIG=res.data.data.fruits; BOARD_LAYOUT=res.data.data.layout; useMock=false;
+        } catch(e) {
+            FRUIT_CONFIG=MOCK_DATA.fruits; BOARD_LAYOUT=MOCK_DATA.layout; useMock=true;
         }
-        startGameLogic();
-    }
 
-    function startGameLogic() {
         FRUIT_CONFIG.forEach(f=>{ if(f.id!==9) currentBets[f.id]=0; });
         initPixi(); initUI(); refreshBalance();
 
-        // Hide Loader
         const mask = document.getElementById('loading-mask');
-        mask.style.opacity='0';
-        setTimeout(()=>mask.style.display='none', 500);
-    }
-
-    // Failsafe
-    function forceEnterGame() {
-        if(!FRUIT_CONFIG.length) {
-            FRUIT_CONFIG = MOCK_DATA.fruits;
-            BOARD_LAYOUT = MOCK_DATA.layout;
-            useMock = true;
-            startGameLogic();
-        }
+        mask.style.opacity='0'; setTimeout(()=>mask.style.display='none', 500);
     }
 
     function initUI() {
@@ -292,8 +326,7 @@
             const w = wrap.clientWidth;
             const h = wrap.clientHeight;
             const s = Math.min(w, h);
-            app.view.style.width = s+'px';
-            app.view.style.height = s+'px';
+            app.view.style.width = s+'px'; app.view.style.height = s+'px';
         };
         resizePixi();
 
@@ -304,8 +337,16 @@
         cBg.beginFill(0xb71c1c); cBg.drawRoundedRect(0,0,330,330,20);
         cBg.beginFill(0xffecb3); cBg.drawCircle(165,165,155);
         center.addChild(cBg);
+
         const txt = new PIXI.Text("CAISHEN", {fontFamily:'Arial', fontSize:45, fill:['#d50000','#ff6f00'], fontWeight:'bold'});
         txt.anchor.set(0.5); txt.position.set(165,130); center.addChild(txt);
+
+        const midUI = new PIXI.Container(); midUI.position.set(45,240);
+        midUI.addChild(new PIXI.Graphics().beginFill(0x0d47a1).drawRoundedRect(0,0,240,50,25));
+        midUI.addChild(new PIXI.Graphics().beginFill(0x000).drawRoundedRect(70,8,100,34,5));
+        const ln = new PIXI.Text("JP", {fontFamily:'Arial', fontSize:24, fill:'#ff5252', fontWeight:'bold'});
+        ln.anchor.set(0.5); ln.position.set(120,25); midUI.addChild(ln);
+        center.addChild(midUI);
         center.position.set(95,95); app.stage.addChild(center);
 
         const step=73, start=5, box=71;
@@ -321,8 +362,12 @@
             const fc=FRUIT_CONFIG.find(x=>x.id==id)||FRUIT_CONFIG[0];
             const st=VISUAL_MAP[id]||VISUAL_MAP[9];
             const g=new PIXI.Container(); g.x=p.x; g.y=p.y;
+
             const b=new PIXI.Graphics(); b.lineStyle(2,0x3e2723); b.beginFill(id===9?0xffcdd2:0xfff8e1); b.drawRoundedRect(0,0,box,box,12); g.addChild(b);
             const ic=new PIXI.Text(st.icon, {fontSize:34}); ic.anchor.set(0.5); ic.position.set(box/2, box/2-4); g.addChild(ic);
+            const lb=new PIXI.Text(id===9?'JP':`x${fc.multiplier}`, {fontFamily:'Arial', fontSize:13, fontWeight:'bold', fill:id===9?'#d32f2f':'#333'});
+            lb.anchor.set(0.5); lb.position.set(box/2, box-12); g.addChild(lb);
+
             const hl=new PIXI.Graphics(); hl.lineStyle(5,0xff0000); hl.beginFill(0xffff00,0.3); hl.drawRoundedRect(-2,-2,box+4,box+4,14); hl.visible=false; g.addChild(hl);
             squares.push({highlight:hl, id:id}); app.stage.addChild(g);
         });
@@ -334,6 +379,7 @@
         currentBets[id]+=10;
         document.getElementById(`bet-val-${id}`).innerText=currentBets[id];
         if(useMock){ MOCK_DATA.balance-=10; refreshBalance(); }
+        sfx.click.play();
     }
 
     async function refreshBalance() {
