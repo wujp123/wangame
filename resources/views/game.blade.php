@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Royal Fruit - Safe Fit</title>
+    <title>Royal Fruit - Final Stable</title>
 
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://pixijs.download/v7.x/pixi.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <!-- 换用更快的 CDN -->
+    <script src="https://lib.baomitu.com/axios/1.6.0/axios.min.js"></script>
+    <script src="https://lib.baomitu.com/pixi.js/7.3.2/pixi.min.js"></script>
+    <script src="https://lib.baomitu.com/howler/2.2.4/howler.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
     <style>
@@ -25,8 +26,10 @@
         #loading-mask {
             position: fixed; inset: 0; background: #000; z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            color: #ffd700; font-family: 'Orbitron'; font-size: 20px; transition: opacity 0.5s;
+            color: #ffd700; font-family: 'Orbitron'; font-size: 20px;
+            transition: opacity 0.5s;
         }
+        #loading-status { margin-top: 10px; font-size: 12px; color: #666; font-family: sans-serif; }
 
         #app-root {
             width: 100%; height: 100%; max-width: 550px; margin: 0 auto;
@@ -37,7 +40,7 @@
 
         /* 1. Header */
         .top-hood {
-            flex: 0 0 auto; height: 60px; /* 保持紧凑 */
+            flex: 0 0 auto; height: 60px;
             background: radial-gradient(circle at 50% 100%, #ff5252, #b71c1c);
             border-bottom: 4px solid #ffd700;
             display: flex; justify-content: space-between; align-items: center;
@@ -54,27 +57,16 @@
         .lcd-digit { font-family: 'Orbitron', monospace; font-size: 16px; color: #ff1744; text-shadow: 0 0 8px #d50000; letter-spacing: 1px; }
         #balanceDisplay { color: #fff; text-shadow:none; }
 
-        /* 2. Game Area (核心修改区域) */
+        /* 2. Game Area */
         #game-wrapper {
-            flex: 1 1 auto; /* 占据剩余高度 */
-            min-height: 0;  /* 允许被压缩 */
-            width: 100%;
+            flex: 1 1 auto; min-height: 0; width: 100%;
             background: #fdf5e6;
             border-left: 2px solid #0d47a1; border-right: 2px solid #0d47a1;
             display: flex; justify-content: center; align-items: center;
             overflow: hidden;
-
-            /* ★★★ 关键修改：增加内边距，防止贴边 ★★★ */
             padding: 10px 5px;
         }
-
-        /* ★★★ 强制 Canvas 适应容器，绝不溢出 ★★★ */
-        #game-wrapper canvas {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain; /* 保持比例缩放 */
-            display: block;
-        }
+        #game-wrapper canvas { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
 
         /* 3. Control Deck */
         .control-deck {
@@ -83,11 +75,9 @@
             border-top: 4px solid #ffd700;
             padding: 5px; padding-bottom: calc(8px + env(safe-area-inset-bottom));
             display: flex; flex-direction: column; gap: 5px;
-            position: relative; z-index: 10;
-            width: 100%; box-sizing: border-box;
+            position: relative; z-index: 10; width: 100%;
         }
 
-        /* Flex 布局保持 v26 的弹性 */
         .func-row {
             display: flex; gap: 4px; justify-content: space-between; align-items: stretch;
             padding: 3px; background: rgba(0,0,0,0.2); border-radius: 10px;
@@ -103,7 +93,7 @@
         .b-sq { width: 100%; height: 100%; border-radius: 8px; font-size: 12px; box-shadow: 0 4px 0 rgba(0,0,0,0.4); border-top: 1px solid rgba(255,255,255,0.4); }
         .b-go { flex: 1.2; border-radius: 10px; height: 100%; background: linear-gradient(180deg, #ffeb3b 0%, #ff6f00 100%); box-shadow: 0 4px 0 #e65100; border: 2px solid #fff; color: #b71c1c; font-family: 'Orbitron'; font-size: clamp(16px, 5vw, 24px); }
 
-        .bet-panel { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; background: #0d47a1; padding: 3px; border-radius: 8px; width: 100%; box-sizing: border-box; }
+        .bet-panel { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; background: #0d47a1; padding: 3px; border-radius: 8px; width: 100%; }
         .bet-col { display: flex; flex-direction: column; align-items: center; gap: 1px; width: 100%; overflow: hidden; }
 
         .odds-glass { width: 100%; height: 20px; font-size: clamp(8px, 2.5vw, 12px); font-weight: 900; color: #fff; display: flex; align-items: center; justify-content: center; text-shadow: 0 1px 1px #000; border: 1px solid rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.6); }
@@ -128,11 +118,13 @@
 </head>
 <body>
 
-<div id="loading-mask">INITIALIZING...</div>
+<div id="loading-mask">
+    <div>INITIALIZING...</div>
+    <div id="loading-status">Checking Resources...</div>
+</div>
 <div id="msg-toast"></div>
 
 <div id="app-root">
-    <!-- 顶部 -->
     <div class="top-hood">
         <div class="bulb-deco"><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div><div class="bulb"></div></div>
         <div class="lcd-group">
@@ -145,12 +137,8 @@
         </div>
     </div>
 
-    <!-- 游戏区 (自适应) -->
-    <div id="game-wrapper">
-        <!-- Canvas -->
-    </div>
+    <div id="game-wrapper"></div>
 
-    <!-- 底部 -->
     <div class="control-deck">
         <div class="func-row">
             <button class="btn-3d b-round-green" onclick="openWallet()">$<br>ADD</button>
@@ -171,28 +159,39 @@
 <!-- Wallet Modal -->
 <div id="walletModal" class="modal-overlay">
     <div class="modal-body">
-        <h3>钱包</h3><p>充值通道加载中...</p>
+        <h3>钱包</h3>
+        <p>充值通道加载中...</p>
         <button onclick="document.getElementById('walletModal').style.display='none'" style="margin-top:10px;padding:8px;width:100%">关闭</button>
     </div>
 </div>
 
 <script>
+    // === 保险丝：3秒后强制进入游戏，不再等待 API ===
+    const loader = document.getElementById('loading-mask');
+    const status = document.getElementById('loading-status');
+
+    // 强制启动定时器
+    setTimeout(() => {
+        if(loader.style.display !== 'none') {
+            console.warn("Force starting offline mode...");
+            status.innerText = "Starting Offline Mode...";
+            useMock = true;
+            startGameLogic();
+        }
+    }, 3000);
+
+    // === 环境适配 ===
     const tg = window.Telegram?.WebApp;
     if(tg) { tg.ready(); tg.expand(); try{tg.setHeaderColor('#b71c1c');}catch(e){} }
 
     function adjustViewport() {
         const h = (tg && tg.viewportStableHeight) ? tg.viewportStableHeight : window.innerHeight;
         document.getElementById('app-root').style.height = h + 'px';
-        // 不需要手动调用 resizePixi，因为 CSS object-fit 会自动处理
     }
-    if(tg) tg.onEvent('viewportChanged', adjustViewport);
     window.addEventListener('resize', adjustViewport);
+    adjustViewport();
 
-    axios.interceptors.response.use(r=>r, e=>{
-        if(e.response && e.response.status===401) location.reload();
-        return Promise.reject(e);
-    });
-
+    // === 数据配置 ===
     const VISUAL_MAP = {
         1: { icon: '💎', color: 'pb-green', tag: 'bg-blue' },
         2: { icon: '7️⃣', color: 'pb-purp', tag: 'bg-red' },
@@ -219,24 +218,41 @@
 
     let FRUIT_CONFIG=[], BOARD_LAYOUT=[], currentBets={}, isSpinning=false, autoPlay=false, squares=[], app, useMock=false;
     const sfx = {
-        click: new Howl({src:['https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js']}),
+        click: new Howl({src:['https://lib.baomitu.com/howler/2.2.4/howler.min.js']}), // Placeholder
         spin: null, win: null
     };
 
+    // === 初始化 ===
     async function initGame() {
-        adjustViewport();
+        status.innerText = "Connecting...";
         try {
-            const res = await axios.get('/api/game/config', {timeout: 1000});
-            FRUIT_CONFIG=res.data.data.fruits; BOARD_LAYOUT=res.data.data.layout; useMock=false;
+            // 尝试连接后端 (1秒超时)
+            if(typeof axios !== 'undefined') {
+                const res = await axios.get('/api/game/config', {timeout: 1000});
+                FRUIT_CONFIG=res.data.data.fruits; BOARD_LAYOUT=res.data.data.layout; useMock=false;
+                status.innerText = "Online Mode Ready";
+            } else {
+                throw new Error("Axios not loaded");
+            }
         } catch(e) {
+            console.log("Offline Mode Active");
             FRUIT_CONFIG=MOCK_DATA.fruits; BOARD_LAYOUT=MOCK_DATA.layout; useMock=true;
+            status.innerText = "Offline Mode Ready";
         }
+
+        startGameLogic();
+    }
+
+    let gameStarted = false;
+    function startGameLogic() {
+        if(gameStarted) return; // 防止重复启动
+        gameStarted = true;
 
         FRUIT_CONFIG.forEach(f=>{ if(f.id!==9) currentBets[f.id]=0; });
         initPixi(); initUI(); refreshBalance();
 
-        const mask = document.getElementById('loading-mask');
-        mask.style.opacity='0'; setTimeout(()=>mask.style.display='none', 500);
+        loader.style.opacity='0';
+        setTimeout(()=>loader.style.display='none', 500);
     }
 
     function initUI() {
@@ -257,13 +273,19 @@
 
     function initPixi() {
         const wrap = document.getElementById('game-wrapper');
-        // 设定一个高清晰度的逻辑尺寸
+        // 使用高分辨率逻辑尺寸
         const LOGIC = 600;
+
+        if(!window.PIXI) {
+            status.innerText = "PixiJS Load Failed";
+            return;
+        }
+
         app = new PIXI.Application({width:LOGIC, height:LOGIC, backgroundAlpha:0, resolution:2});
         wrap.appendChild(app.view);
 
-        // ★ CSS 负责缩放，JS 只负责画
-        // 无需监听 resize 事件，CSS object-fit 会搞定一切
+        // ★ CSS 接管 Canvas 尺寸，JS 只负责内部渲染
+        // Canvas 不需要 resize 事件，它会自动被 CSS 缩放
 
         const bg = new PIXI.Graphics(); bg.beginFill(0xfdf5e6); bg.drawRect(0,0,LOGIC,LOGIC); app.stage.addChild(bg);
 
@@ -284,7 +306,7 @@
         center.addChild(midUI);
         center.position.set(110,110); app.stage.addChild(center);
 
-        const step=84, start=5, box=82; // 调整尺寸以匹配 600x600
+        const step=84, start=5, box=82;
         const POS=[];
         for(let i=0;i<7;i++) POS.push({x:start+i*step, y:start});
         for(let i=1;i<=6;i++) POS.push({x:start+6*step, y:start+i*step});
@@ -365,6 +387,7 @@
     function toggleAuto(){autoPlay=!autoPlay; document.querySelector('.btn-auto').style.color=autoPlay?'#76ff03':'#fff';}
     function showToast(m){const t=document.getElementById('msg-toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',2000);}
 
+    // Start Game
     initGame();
 </script>
 </body>
